@@ -32,7 +32,7 @@ class Scraper:
             post_market_data = self.get_post_market_data()
             summary_data = self.get_summary_data()
 
-            raw_data = regular_market_data | pre_market_data | post_market_data | summary_data
+            raw_data = regular_market_data | pre_market_data | post_market_data | summary_data | {'ticker_symbol': self.ticker_symbol}
             
             print(raw_data)
             
