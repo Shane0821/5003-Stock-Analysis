@@ -17,9 +17,13 @@ class Scraper:
         self.options.add_argument('--no-sandbox')
         self.options.add_argument('--disable-dev-shm-usage')
         self.is_running = False
+        self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
+                        options=self.options)
+        self.driver.set_window_size(1920, 1080)
 
     def __del__(self):
         self.stop()
+        self.driver.quit()
 
     def scrape(self):
         while (self.is_running):
@@ -33,15 +37,9 @@ class Scraper:
             print(raw_data)
             
             time.sleep(5)
-        
-        self.driver.quit()
 
     def start(self):
-        self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
-                        options=self.options)
-        self.driver.set_window_size(1920, 1080)
         self.driver.get(f'https://finance.yahoo.com/quote/{self.ticker_symbol}')
-
         self.is_running = True
         self.scraper = threading.Thread(target=self.scrape)
         self.scraper.start()
@@ -105,6 +103,7 @@ class Scraper:
             return {}
 
     def get_summary_data(self):
+        # TODO: move data processing to spark streaming
         try:
             regular_market_previous_close = self.driver.find_element(
                 By.CSS_SELECTOR, f'[data-symbol="{self.ticker_symbol}"][data-field="regularMarketPreviousClose"]').text.replace(',', '')
@@ -148,3 +147,17 @@ class Scraper:
             return data
         except:
             return {}
+        
+
+# scraper = Scraper('AAPL')
+
+# scraper.start()
+# time.sleep(20)
+# scraper.stop()
+
+# print("stopped")
+# time.sleep(10)
+
+# scraper.start()
+# time.sleep(20)
+# scraper.stop()
