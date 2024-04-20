@@ -13,7 +13,5 @@ comsumer = KafkaConsumer(
     key_deserializer=lambda v: json.loads(v.decode('ascii')),
 )
 
-print(comsumer.partitions_for_topic(topic))
-
 for message in comsumer:
-    print(message.partition, message.offset, message.key, message.value)
+    print(message)
