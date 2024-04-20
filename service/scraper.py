@@ -10,7 +10,7 @@ import time
 import threading
 
 class Scraper:
-    def __init__(self, ticker_symbol):
+    def __init__(self, ticker_symbol, on_data):
         self.ticker_symbol = ticker_symbol
         self.options = Options()
         self.options.add_argument('--headless=new')
@@ -20,6 +20,7 @@ class Scraper:
         self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
                         options=self.options)
         self.driver.set_window_size(1920, 1080)
+        self.on_data = on_data # callback on data
 
     def __del__(self):
         self.stop()
@@ -27,14 +28,14 @@ class Scraper:
 
     def scrape(self):
         while (self.is_running):
-            regular_market_data = self.get_regular_market_data()
+            summary_data = self.get_summary_data()
             pre_market_data = self.get_pre_market_data()
             post_market_data = self.get_post_market_data()
-            summary_data = self.get_summary_data()
+            regular_market_data = self.get_regular_market_data()
 
-            raw_data = regular_market_data | pre_market_data | post_market_data | summary_data | {'ticker_symbol': self.ticker_symbol}
+            raw_data = regular_market_data | pre_market_data | post_market_data | summary_data
             
-            print(raw_data)
+            self.on_data(self.ticker_symbol, raw_data)
             
             time.sleep(5)
 
@@ -149,7 +150,7 @@ class Scraper:
             return {}
         
 
-# scraper = Scraper('AAPL')
+# scraper = Scraper('AAPL', on_data=lambda x: print(x))
 
 # scraper.start()
 # time.sleep(20)

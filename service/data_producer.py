@@ -12,23 +12,15 @@ producer = KafkaProducer(
     key_serializer=lambda v: json.dumps(v).encode('ascii'),
 )
 
-raw_data = {'price': 100, 'name': 'AMZN'}
-for i in range(10):
-    print("before")
-    producer.send(topic, key={'id': 0}, value=raw_data)
-    producer.send(topic, key={'id': 1}, value=raw_data)
-    producer.send(topic, key={'id': 2}, value=raw_data)
-    producer.send(topic, key={'id': 3}, value=raw_data)
-    producer.send(topic, key={'id': 4}, value=raw_data)
-    print("sent")
+def send_data(ticker_symbol, data):
+    producer.send(topic, key={'ticker_symbol': ticker_symbol}, value=data)
 
-producer.flush()
-# scraper_AMZN = Scraper('AMZN')
-# scraper_GOOG = Scraper('GOOG')
-# scraper_AAPL = Scraper('AAPL')
+scraper_AMZN = Scraper('AMZN', on_data=send_data)
+scraper_GOOG = Scraper('GOOG', on_data=send_data)
+scraper_AAPL = Scraper('AAPL', on_data=send_data)
 
-# scraper_AMZN.start()
-# scraper_GOOG.start()
-# scraper_AAPL.start() 
+scraper_AMZN.start()
+scraper_GOOG.start()
+scraper_AAPL.start() 
 
 
