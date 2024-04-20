@@ -19,6 +19,7 @@ for i in range(10):
     producer.send(topic, key={'id': 1}, value=raw_data)
     producer.send(topic, key={'id': 2}, value=raw_data)
     producer.send(topic, key={'id': 3}, value=raw_data)
+    producer.send(topic, key={'id': 4}, value=raw_data)
     print("sent")
 
 producer.flush()
