@@ -1,6 +1,6 @@
 #!/bin/bash
 
-docker compose -f spark-master-worker.yml down
+sudo docker compose -f ./docker-compose/spark-master-worker.yml down
 
-docker compose -f zk-single-kafka-single.yml down
+sudo docker compose -f ./docker-compose/zk-single-kafka-single.yml down
 
