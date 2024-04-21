@@ -1,17 +1,32 @@
-from kafka import KafkaConsumer
-from kafka.errors import KafkaError
-from kafka.admin import KafkaAdminClient, NewTopic
-import json
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import *
+import pyspark.sql.functions as F
+from pyspark.sql.types import *
 
-topic = 'real-time-stock-data'
+## Create a spark session
+spark = SparkSession \
+    .builder \
+    .master('spark://localhost:7077') \
+    .appName("streaming processor") \
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
+    .getOrCreate()
 
-comsumer = KafkaConsumer(
-    topic,
-    group_id='real-time-stock-group',
-    bootstrap_servers='localhost:29092',
-    value_deserializer=lambda v: json.loads(v.decode('ascii')),
-    key_deserializer=lambda v: json.loads(v.decode('ascii')),
-)
+## Kafka configs
+kafka_input_config = {
+    "kafka.bootstrap.servers" : "localhost:29092",
+    "subscribe" : "real-time-stock-data",
+    "startingOffsets" : "latest",
+    "failOnDataLoss" : "false"
+}
 
-for message in comsumer:
-    print(message)
+## Read Stream
+df = spark \
+    .readStream \
+    .format("kafka") \
+    .options(**kafka_input_config) \
+    .load()
+
+df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+
+print(df)
+    
