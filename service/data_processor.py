@@ -19,14 +19,22 @@ kafka_input_config = {
     "failOnDataLoss" : "false"
 }
 
+print("start")
+
 ## Read Stream
 df = spark \
     .readStream \
     .format("kafka") \
     .options(**kafka_input_config) \
-    .load()
+    .load() \
+    .selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)") \
+    .writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .trigger(continuous='2 second') \
+    .start()
 
-df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+df.awaitTermination()
 
-print(df)
+print("finish")
     
