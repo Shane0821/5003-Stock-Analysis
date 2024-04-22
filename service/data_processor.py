@@ -6,14 +6,15 @@ from pyspark.sql.types import *
 ## Create a spark session
 spark = SparkSession \
     .builder \
-    .master('spark://localhost:7077') \
+    .master('spark://172.16.0.4:7077') \
     .appName("streaming processor") \
     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
     .getOrCreate()
 
 ## Kafka configs
 kafka_input_config = {
-    "kafka.bootstrap.servers" : "localhost:29092",
+    "kafka.bootstrap.servers" : "172.16.0.3:9092",
+    "kafka.group.id" : "real-time-stock-data-consumer",
     "subscribe" : "real-time-stock-data",
     "startingOffsets" : "latest",
     "failOnDataLoss" : "false"
@@ -26,12 +27,13 @@ df = spark \
     .readStream \
     .format("kafka") \
     .options(**kafka_input_config) \
-    .load() \
-    .selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)") \
+    .load()
+
+df = df.select("*") \
     .writeStream \
     .outputMode("update") \
     .format("console") \
-    .trigger(continuous='2 second') \
+    .trigger(continuous='20 second') \
     .start()
 
 df.awaitTermination()

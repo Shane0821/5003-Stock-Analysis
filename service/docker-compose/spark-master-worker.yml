@@ -1,7 +1,18 @@
 version: '3'
+
+networks:
+  app-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/24
+        
 services:
   spark-master:
     image: bitnami/spark:3.5.1
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.4
     container_name: spark-master
     ports:
       - "8080:8080"
@@ -11,6 +22,9 @@ services:
 
   spark-worker-1:
     image: bitnami/spark:3.5.1
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.5
     container_name: spark-worker-1
     depends_on:
       - spark-master
@@ -21,6 +35,9 @@ services:
 
   spark-worker-2:
     image: bitnami/spark:3.5.1
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.6
     container_name: spark-worker-2
     depends_on:
       - spark-master
