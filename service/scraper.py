@@ -29,11 +29,11 @@ class Scraper:
     def scrape(self):
         while (self.is_running):
             summary_data = self.get_summary_data()
-            pre_market_data = self.get_pre_market_data()
-            post_market_data = self.get_post_market_data()
+            # pre_market_data = self.get_pre_market_data()
+            # post_market_data = self.get_post_market_data()
             regular_market_data = self.get_regular_market_data()
 
-            raw_data = regular_market_data | pre_market_data | post_market_data | summary_data
+            raw_data = regular_market_data | summary_data # | pre_market_data | post_market_data 
             
             self.on_data(self.ticker_symbol, raw_data)
             
