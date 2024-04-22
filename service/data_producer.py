@@ -8,8 +8,8 @@ topic = 'real-time-stock-data'
 producer = KafkaProducer(
     client_id='real-time-stock-producer-1',
     bootstrap_servers='172.16.0.3:9092',
-    value_serializer=lambda v: json.dumps(v).encode('ascii'),
-    key_serializer=lambda v: json.dumps(v).encode('ascii'),
+    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    key_serializer=lambda v: json.dumps(v).encode('utf-8'),
 )
 
 def send_data(ticker_symbol, data):
