@@ -19,6 +19,30 @@ kafka_input_config = {
     "failOnDataLoss" : "false"
 }
 
+# Define the schema for the key and value
+key_schema = StructType([
+    StructField("ticker_symbol", StringType()),
+    # Add more fields here based on your key structure
+])
+
+value_schema = StructType([
+    StructField("regular_market_price", StringType()),
+    StructField("regular_market_change", StringType()),
+    StructField("regular_market_change_percent", StringType()),
+    StructField("regular_market_previous_close", StringType()),
+    StructField("regular_market_open", StringType()),
+    StructField("bid", StringType()),
+    StructField("ask", StringType()),
+    StructField("regular_market_volume", StringType()),
+    StructField("average_volume", StringType()),
+    StructField("market_cap", StringType()),
+    StructField("beta", StringType()),
+    StructField("pe_ratio", StringType()),
+    StructField("eps", StringType()),
+    StructField("1y_target_est", StringType())
+    # Add more fields here based on your value structure
+])
+
 print("start")
 
 ## Read Stream
@@ -28,7 +52,13 @@ df = spark \
     .options(**kafka_input_config) \
     .load()
 
-df = df.select("value") \
+# Deserialize the key and value
+df = df.select(
+    F.from_json(F.col("key").cast("string"), key_schema).alias("key"),
+    F.from_json(F.col("value").cast("string"), value_schema).alias("value")
+)
+
+df = df.select("*") \
     .writeStream \
     .outputMode("update") \
     .format("console") \
