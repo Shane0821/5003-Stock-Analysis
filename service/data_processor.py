@@ -14,7 +14,6 @@ spark = SparkSession \
 ## Kafka configs
 kafka_input_config = {
     "kafka.bootstrap.servers" : "172.16.0.3:9092",
-    "kafka.group.id" : "real-time-stock-data-consumer",
     "subscribe" : "real-time-stock-data",
     "startingOffsets" : "latest",
     "failOnDataLoss" : "false"
