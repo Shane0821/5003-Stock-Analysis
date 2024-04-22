@@ -28,11 +28,11 @@ df = spark \
     .options(**kafka_input_config) \
     .load()
 
-df = df.select("*") \
+df = df.select("value") \
     .writeStream \
     .outputMode("update") \
     .format("console") \
-    .trigger(continuous='20 second') \
+    .trigger(continuous='10 second') \
     .start()
 
 df.awaitTermination()
