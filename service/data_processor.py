@@ -139,7 +139,11 @@ agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
     last('1y_target_est').alias('1y_target_est')
 )
 
-# agg = agg.select("*")
+# Add signal (TODO)
+# agg = agg.withColumn('signal', 
+#                      when(col('wclose') > col('wopen'), 1)
+#                      .when(col('wclose') < col('wopen'), -1)
+#                      .otherwise(0))
 
 # Write to console
 aggStream = agg.writeStream \
