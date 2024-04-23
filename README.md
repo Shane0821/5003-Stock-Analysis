@@ -7,7 +7,7 @@
     - pyspark
     - selenium
     - webdriver_manager
-- jdk 17.0.10
+- jdk 17.0.10 or 17.0.11
 
 ## Commands
 To start kafka and spark cluster, execute:
