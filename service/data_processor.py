@@ -103,14 +103,53 @@ df = df.withColumn('eps', regexp_replace(col('eps'), '--', '0').cast(FloatType()
 df = df = df.withColumn('1y_target_est', when(col('1y_target_est') == '--', 0). \
                         otherwise(regexp_replace(col('1y_target_est'), ',', '')).cast(FloatType()))
 
-# Write to console
-df = df.writeStream \
+df = df.withColumn('timestamp', col('timestamp').cast(TimestampType()))
+
+## Write to console
+dfStream = df.writeStream \
     .outputMode("update") \
     .format("console") \
-    .trigger(continuous='10 second') \
+    .trigger(continuous='60 second') \
     .start()
 
-df.awaitTermination()
+# ===============================================
+
+# Aggregate by mimute
+agg = df.withColumn('timestamp', date_trunc('minute', col('timestamp')))
+
+agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
+    max('regular_market_price').alias('wmax__price'),
+    min('regular_market_price').alias('wmin_price'),
+    first('regular_market_price').alias('wopen'),
+    last('regular_market_price').alias('wclose'),
+    (last('regular_market_volume') - first('regular_market_volume')).alias('wvolume_change'),
+    
+    last('regular_market_previous_close').alias('regular_market_previous_close'),
+    last('regular_market_open').alias('regular_market_open'),
+    last('bid_price').alias('bid_price'),
+    last('bid_size').alias('bid_size'),
+    last('ask_price').alias('ask_price'),
+    last('ask_size').alias('ask_size'),
+    last('average_volume').alias('average_volume'),
+    last('market_cap').alias('market_cap'),
+    last('market_cap_type').alias('market_cap_type'),
+    last('beta').alias('beta'),
+    last('pe_ratio').alias('pe_ratio'),
+    last('eps').alias('eps'),
+    last('1y_target_est').alias('1y_target_est')
+)
+
+# agg = agg.select("*")
+
+# Write to console
+aggStream = agg.writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .trigger(processingTime='60 second') \
+    .start()
+
+dfStream.awaitTermination()
+aggStream.awaitTermination()
 
 print("finish")
     
