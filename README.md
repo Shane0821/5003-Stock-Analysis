@@ -29,5 +29,5 @@ This will start scrapers which send data to kafka.
 
 Finally, we start spark streaming to process data and send it to db/front end. Create a new terminal and execute:
 ```
-python3 data_processor.py
+sudo docker exec -it spark-master pip install py4j && python3 ./data_processor.py
 ```
