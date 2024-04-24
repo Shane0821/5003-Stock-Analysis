@@ -8,7 +8,8 @@ spark = SparkSession \
     .builder \
     .master('spark://172.16.0.4:7077') \
     .appName("streaming processor") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
+    .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.3") \
+    .config("spark.sql.streaming.checkpointLocation", "/tmp/spark/checkpoint") \
     .getOrCreate()
 
 ## Kafka configs
@@ -106,18 +107,19 @@ df = df = df.withColumn('1y_target_est', when(col('1y_target_est') == '--', 0). 
 df = df.withColumn('timestamp', col('timestamp').cast(TimestampType()))
 
 ## Write to console
-dfStream = df.writeStream \
-    .outputMode("update") \
-    .format("console") \
-    .trigger(continuous='60 second') \
-    .start()
+# dfStream = df.writeStream \
+#     .outputMode("update") \
+#     .format("console") \
+#     .trigger(continuous='60 second') \
+#     .start()
 
 # ===============================================
 
 # Aggregate by mimute
 agg = df.withColumn('timestamp', date_trunc('minute', col('timestamp')))
 
-agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
+agg = agg.withWatermark('timestamp', '2 minute') \
+    .groupBy('ticker_symbol', 'timestamp').agg(
     max('regular_market_price').alias('wmax__price'),
     min('regular_market_price').alias('wmin_price'),
     first('regular_market_price').alias('wopen'),
@@ -146,13 +148,22 @@ agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
 #                      .otherwise(0))
 
 # Write to console
+# aggStream = agg.writeStream \
+#     .outputMode("update") \
+#     .format("console") \
+#     .trigger(processingTime='60 second') \
+#     .start()
+
 aggStream = agg.writeStream \
-    .outputMode("update") \
-    .format("console") \
+    .outputMode("complete") \
+    .format("mongodb") \
+    .option("spark.mongodb.connection.uri", "mongodb+srv://msbd:bdt5003!@5003-cluster-2.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000") \
+    .option("spark.mongodb.database", "stock") \
+    .option("spark.mongodb.collection", "minute-stock-data") \
     .trigger(processingTime='60 second') \
     .start()
 
-dfStream.awaitTermination()
+# dfStream.awaitTermination()
 aggStream.awaitTermination()
 
 print("finish")
