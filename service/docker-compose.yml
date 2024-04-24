@@ -37,7 +37,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   spark-master:
-    image: bitnami/spark:3.5.1
+    image: bitnami/spark:3.4.3
     networks:
       app-network:
         ipv4_address: 172.16.0.4
@@ -51,7 +51,7 @@ services:
       - .:/tmp/code
 
   spark-worker-1:
-    image: bitnami/spark:3.5.1
+    image: bitnami/spark:3.4.3
     networks:
       app-network:
         ipv4_address: 172.16.0.5
@@ -64,7 +64,7 @@ services:
       - "SPARK_MODE=worker"
 
   spark-worker-2:
-    image: bitnami/spark:3.5.1
+    image: bitnami/spark:3.4.3
     networks:
       app-network:
         ipv4_address: 172.16.0.6
