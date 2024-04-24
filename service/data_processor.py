@@ -106,11 +106,11 @@ df = df = df.withColumn('1y_target_est', when(col('1y_target_est') == '--', 0). 
 df = df.withColumn('timestamp', col('timestamp').cast(TimestampType()))
 
 ## Write to console
-dfStream = df.writeStream \
-    .outputMode("update") \
-    .format("console") \
-    .trigger(continuous='60 second') \
-    .start()
+# dfStream = df.writeStream \
+#     .outputMode("update") \
+#     .format("console") \
+#     .trigger(continuous='60 second') \
+#     .start()
 
 # ===============================================
 
@@ -146,13 +146,24 @@ agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
 #                      .otherwise(0))
 
 # Write to console
+# aggStream = agg.writeStream \
+#     .outputMode("update") \
+#     .format("console") \
+#     .trigger(processingTime='60 second') \
+#     .start()
+
 aggStream = agg.writeStream \
-    .outputMode("update") \
-    .format("console") \
+    .outputMode("complete") \
+    .format("mongodb") \
+    .option("checkpointLocation", "/tmp/pyspark/") \
+    .option("forceDeleteTempCheckpointLocation", "true") \
+    .option("spark.mongodb.connection.uri", "mongodb+srv://msbd:bdt5003!@5003-cluster-2.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000") \
+    .option("spark.mongodb.database", "stock") \
+    .option("spark.mongodb.collection", "minute-stock-data") \
     .trigger(processingTime='60 second') \
     .start()
 
-dfStream.awaitTermination()
+# dfStream.awaitTermination()
 aggStream.awaitTermination()
 
 print("finish")
