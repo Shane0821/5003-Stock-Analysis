@@ -2,6 +2,10 @@
 
 ## Requirement
 - docker desktop installed
+- python (3.9+)
+    - kafka-python
+    - selenium
+    - webdriver_manager
 
 ## Commands
 To start kafka and spark cluster, execute:
