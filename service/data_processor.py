@@ -8,7 +8,7 @@ spark = SparkSession \
     .builder \
     .master('spark://172.16.0.4:7077') \
     .appName("streaming processor") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
+    .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
     .getOrCreate()
 
 ## Kafka configs
