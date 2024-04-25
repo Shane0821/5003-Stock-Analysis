@@ -3,7 +3,7 @@
 ## Requirement
 - google chrome
   ```
-  sudo apt -y install google-chrome-stable 
+  sudo apt-get install google-chrome-stable 
   ```
 - docker desktop
 - python (3.9+), with:
