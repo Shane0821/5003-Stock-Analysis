@@ -102,11 +102,11 @@ def preprocess(df):
                             otherwise(regexp_replace(col('1y_target_est'), ',', '')).cast(FloatType()))
     return df
 
-def aggregate_by_minute(df):
+def aggregate_by_minute(df, window):
     # Aggregate by mimute
     agg = df.withColumn('timestamp', date_trunc('minute', col('timestamp')))
 
-    agg = agg.withWatermark('timestamp', '2 minute') \
+    agg = agg.withWatermark('timestamp', window) \
         .groupBy('ticker_symbol', 'timestamp').agg(
             max('regular_market_price').alias('wmax__price'),
             min('regular_market_price').alias('wmin_price'),
@@ -158,7 +158,7 @@ print("start")
 stock_data = preprocess(load_data())
 # write_to_console(stock_data, '60 second')
 
-minute_stock_data = aggregate_by_minute(stock_data)
+minute_stock_data = aggregate_by_minute(stock_data, '2 minute')
 write_to_mongo(minute_stock_data, '60 second', 'stock', 'minute-stock-data')
 
 # Add signal (TODO)
