@@ -21,7 +21,7 @@ sudo chmod +x ./start_service.sh
 
 To stop kafka and spark cluster, execute:
 ```
-sudo chmod +x ./start_service.sh
+sudo chmod +x ./stop_service.sh
 ./stop_service.sh
 ```
 
