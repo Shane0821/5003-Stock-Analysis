@@ -8,7 +8,8 @@ spark = SparkSession \
     .builder \
     .master('spark://172.16.0.4:7077') \
     .appName("streaming processor") \
-    .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
+    .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.3") \
+    .config("spark.sql.streaming.checkpointLocation", "/tmp/spark/checkpoint") \
     .getOrCreate()
 
 ## Kafka configs
@@ -117,7 +118,8 @@ df = df.withColumn('timestamp', col('timestamp').cast(TimestampType()))
 # Aggregate by mimute
 agg = df.withColumn('timestamp', date_trunc('minute', col('timestamp')))
 
-agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
+agg = agg.withWatermark('timestamp', '2 minute') \
+    .groupBy('ticker_symbol', 'timestamp').agg(
     max('regular_market_price').alias('wmax__price'),
     min('regular_market_price').alias('wmin_price'),
     first('regular_market_price').alias('wopen'),
@@ -155,8 +157,6 @@ agg = agg.groupBy('ticker_symbol', 'timestamp').agg(
 aggStream = agg.writeStream \
     .outputMode("complete") \
     .format("mongodb") \
-    .option("checkpointLocation", "/tmp/pyspark/") \
-    .option("forceDeleteTempCheckpointLocation", "true") \
     .option("spark.mongodb.connection.uri", "mongodb+srv://msbd:bdt5003!@5003-cluster-2.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000") \
     .option("spark.mongodb.database", "stock") \
     .option("spark.mongodb.collection", "minute-stock-data") \
