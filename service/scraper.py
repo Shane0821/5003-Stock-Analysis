@@ -45,7 +45,8 @@ class Scraper:
     
     def stop(self):
         self.is_running = False
-        self.scraper.join()
+        if self.scraper:
+            self.scraper.join()
 
     def get_regular_market_data(self):
         try:
