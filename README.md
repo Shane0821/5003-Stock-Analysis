@@ -2,19 +2,26 @@
 
 ## Requirement
 - docker desktop installed
-- python (3.9+)
+- python (3.9+), with:
     - kafka-python
     - selenium
     - webdriver_manager
 
 ## Commands
+Go to service directory:
+```
+cd service
+```
+
 To start kafka and spark cluster, execute:
 ```
+sudo chmod +x ./start_service.sh
 ./start_service.sh
 ```
 
 To stop kafka and spark cluster, execute:
 ```
+sudo chmod +x ./start_service.sh
 ./stop_service.sh
 ```
 
@@ -25,7 +32,7 @@ python3 data_producer.py
 ```
 This will start scrapers which send data to kafka.
 
-Finally, we start spark streaming to process data and send it to db/front end. Create a new terminal and execute:
+Finally, we start spark streaming to process data and send it to db, kafka, console, etc. Create a new terminal and execute:
 ```
 sudo docker exec -it spark-master /bin/bash -c "pip install py4j && python3 /tmp/code/data_processor.py"
 ```
