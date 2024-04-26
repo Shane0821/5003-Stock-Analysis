@@ -15,12 +15,12 @@ producer = KafkaProducer(
 def send_data(ticker_symbol, data):
     producer.send(topic, key={'ticker_symbol': ticker_symbol}, value=data)
 
-scraper_AMZN = Scraper('AMZN', on_data=send_data)
-scraper_GOOG = Scraper('GOOG', on_data=send_data)
-# scraper_AAPL = Scraper('AAPL', on_data=send_data)
+# scraper_AMZN = Scraper('AMZN', on_data=send_data)
+# scraper_GOOG = Scraper('GOOG', on_data=send_data)
+scraper_AAPL = Scraper('AAPL', on_data=send_data)
 
-scraper_AMZN.start()
-scraper_GOOG.start()
-# scraper_AAPL.start() 
+# scraper_AMZN.start()
+# scraper_GOOG.start()
+scraper_AAPL.start()
 
 
