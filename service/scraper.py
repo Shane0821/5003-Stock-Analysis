@@ -51,11 +51,11 @@ class Scraper:
     def get_regular_market_data(self):
         try:
             regular_market_price = self.driver.find_element(
-                By.CSS_SELECTOR,  f'[data-symbol="{self.ticker_symbol}"][data-field="regularMarketPrice"]').text
+                By.CSS_SELECTOR,  f'[data-symbol="{self.ticker_symbol}"][data-testid="qsp-price"]').text
             regular_market_change = self.driver.find_element(
                 By.CSS_SELECTOR, f'[data-symbol="{self.ticker_symbol}"][data-field="regularMarketChange"]').text
             regular_market_change_percent = self.driver.find_element(
-                By.CSS_SELECTOR, f'[data-symbol="{self.ticker_symbol}"][data-field="regularMarketChangePercent"]').text
+                By.CSS_SELECTOR, f'[data-symbol="{self.ticker_symbol}"][data-testid="qsp-price-change-percent"]').text
             
             data = {}
             data['regular_market_price'] = regular_market_price
