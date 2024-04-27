@@ -164,12 +164,22 @@ def mean_reversion_strategy(df_with_watermark, moving_average_window, threshold)
         window(col("timestamp"), moving_average_window),  # 30 seconds window
         "wclose"  # Group by price to calculate its average per window
     ).agg(
+        last("timestamp").alias("timestamp"),
         last("wopen").alias("wopen"),
         last("whigh").alias("whigh"),
         last("wlow").alias("wlow"),
-        avg("wclose").alias(moving_average_name)
+        avg("wclose").alias(moving_average_name),
+        last('bid_price').alias('bid_price'),
+        last('bid_size').alias('bid_size'),
+        last('ask_price').alias('ask_price'),
+        last('ask_size').alias('ask_size'),
+        last('average_volume').alias('average_volume'),
+        last('market_cap').alias('market_cap'),
+        last('market_cap_type').alias('market_cap_type'),
+        last('beta').alias('beta'),
+        max("wclose").alias("max_wclose"),
+        min("wclose").alias("min_wclose")
     )
-
     # Create the mean reversion signal column
     agg = agg.withColumn(
         'mean_reversion_signal',
@@ -177,7 +187,41 @@ def mean_reversion_strategy(df_with_watermark, moving_average_window, threshold)
         .when((col('wclose') - col(moving_average_name)) / col(moving_average_name) < -threshold, -1)
         .otherwise(0)
     )
-    agg.show()
+    return agg
+
+def get_rsi_signal(agg):
+    # Calculate gain and loss within each window
+    agg = agg.withColumn("gain", col("max_wclose") - col("min_wclose"))
+    agg = agg.withColumn("loss", col("min_wclose") - col("max_wclose"))
+
+    # Calculate the duration of each window in seconds
+    agg = agg.withColumn(
+        "window_duration",
+        (unix_timestamp(col("window").end) - unix_timestamp(col("window").start))
+    )
+
+    # Calculate average gain and loss using the duration in seconds
+    agg = agg.withColumn(
+        "avg_gain",
+        col("gain") / when(col("window_duration") > 0, col("window_duration")).otherwise(1)
+    ).withColumn(
+        "avg_loss",
+        col("loss") / when(col("window_duration") > 0, col("window_duration")).otherwise(1)
+    )
+
+    # Compute RSI
+    agg = agg.withColumn(
+        "rsi",
+        100 - (100 / (1 + (col("avg_gain") / col("avg_loss"))))
+    )
+
+    agg = agg.withColumn(
+        "rsi_signal",
+        when(col("rsi") > 70, -1)
+        .when(col("rsi") < 30, 1)
+        .otherwise(0)
+    )
+    agg = agg.drop('max_wclose','min_wclose',"gain","loss",'avg_gain','avg_loss')
     return agg
 
 print("*"*50 + "\n"+ "Start")
@@ -190,13 +234,17 @@ stock_data = preprocess(load_data())
 #window = '60 minute' # 60 data poin
 aggregate_interval = 'second'
 water_mark_window = '1 minute'
-minute_stock_data = aggregate_stock_data(stock_data, aggregate_interval, water_mark_window)
+aggregate_data = aggregate_stock_data(stock_data, aggregate_interval, water_mark_window)
 
-print('='*50 + '\nstart to create mean-reversion:')
+print('='*50 + '\nstart to create mean-reversion signal:')
 threshold = 0.01
 moving_average_window = '10 second'
-data_signal = mean_reversion_strategy(minute_stock_data, moving_average_window, threshold)
-write_to_console(data_signal,  '2 minute',mode='append')
+data_signal = mean_reversion_strategy(aggregate_data, moving_average_window, threshold)
+
+print('='*50 + '\nstart to create rsi signal:')
+data_signal = get_rsi_signal(data_signal)
+
+write_to_console(data_signal,  '2 minute',mode='update')
 print('*'*50)
 
 
