@@ -191,8 +191,8 @@ stock_data = preprocess(load_data())
 aggregate_interval = 'second'
 water_mark_window = '1 minute'
 minute_stock_data = aggregate_stock_data(stock_data, aggregate_interval, water_mark_window)
-print('='*50 + '\nAfter data handling:')
 
+print('='*50 + '\nstart to create mean-reversion:')
 threshold = 0.01
 moving_average_window = '10 second'
 data_signal = mean_reversion_strategy(minute_stock_data, moving_average_window, threshold)
