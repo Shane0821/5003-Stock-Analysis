@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
+from pyspark.sql.window import Window
 
 ## Create a spark session
 spark = SparkSession \
@@ -102,14 +103,14 @@ def preprocess(df):
                             otherwise(regexp_replace(col('1y_target_est'), ',', '')).cast(FloatType()))
     return df
 
-def aggregate_by_minute(df, window):
+def aggregate_by_minute(agg, water_mark_window):
     # Aggregate by mimute
-    agg = df.withColumn('timestamp', date_trunc('minute', col('timestamp')))
+    #agg = agg.withColumn('timestamp', date_trunc('minute', col('timestamp')))
 
-    agg = agg.withWatermark('timestamp', window) \
+    agg = agg.withWatermark('timestamp', water_mark_window) \
         .groupBy('ticker_symbol', 'timestamp').agg(
-            max('regular_market_price').alias('wmax__price'),
-            min('regular_market_price').alias('wmin_price'),
+            max('regular_market_price').alias('whigh'),
+            min('regular_market_price').alias('wlow'),
             first('regular_market_price').alias('wopen'),
             last('regular_market_price').alias('wclose'),
             (last('regular_market_volume') - first('regular_market_volume')).alias('wvolume_change'),
@@ -135,7 +136,7 @@ def write_to_console(df, interval, mode='update'):
     dfStream = df.writeStream \
         .outputMode(mode) \
         .format("console") \
-        .trigger(continuous=interval) \
+        .trigger(processingTime=interval) \
         .start()
 
     dfStream.awaitTermination()
@@ -153,13 +154,45 @@ def write_to_mongo(df, interval, database, collection, mode='complete'):
 
     dfStream.awaitTermination()
 
-print("start")
 
+def mean_reversion_strategy(agg, moving_average_minute, threshold):
+    # Define window for moving average calculation
+    windowSpec = Window.orderBy("timestamp").rangeBetween(-moving_average_minute, 0)  # 30 seconds window
+
+    # Calculate moving average and add as a new column
+    agg = agg.withColumn(
+        "moving_avg_price",
+        avg("wclose").over(windowSpec)
+    )
+
+    # Create the mean reversion signal column
+    agg = agg.withColumn(
+        'mean_reversion_signal',
+        when((col('wclose') - col('moving_avg_price')) / col(f'moving_avg_price') > threshold, 1)
+        .when((col('wclose') - col('moving_avg_price')) / col('moving_avg_price') < -threshold, -1)
+        .otherwise(0)
+    )
+    return agg
+
+print("*"*50 + "\n"+ "Start")
+# basic data frequency: per 5 seconds
 stock_data = preprocess(load_data())
-# write_to_console(stock_data, '60 second')
+#print('-'*50 + '\nData Input:')
+#write_to_console(stock_data, '30 second', mode='update')
 
-minute_stock_data = aggregate_by_minute(stock_data, '2 minute')
-write_to_mongo(minute_stock_data, '60 second', 'stock', 'minute-stock-data')
+# user input
+#window = '60 minute' # 60 data points
+threshold = 0.01
+water_mark_window = '2 minute'
+minute_stock_data = aggregate_by_minute(stock_data, water_mark_window)
+print('='*50 + '\nAfter data handling:')
+moving_average_minute = 30
+data_signal = mean_reversion_strategy(minute_stock_data, moving_average_minute, threshold)
+write_to_console(data_signal,  '3 minute',mode='append')
+print('*'*50)
+
+#minute_stock_data = df1.union(df2)
+# write_to_mongo(minute_stock_data, '60 second', 'stock', 'minute-stock-data')
 
 # Add signal (TODO)
 # agg = agg.withColumn('signal', 
