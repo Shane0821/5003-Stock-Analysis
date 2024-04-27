@@ -103,9 +103,10 @@ def preprocess(df):
                             otherwise(regexp_replace(col('1y_target_est'), ',', '')).cast(FloatType()))
     return df
 
-def aggregate_by_minute(agg, water_mark_window):
-    # Aggregate by mimute
-    #agg = agg.withColumn('timestamp', date_trunc('minute', col('timestamp')))
+def aggregate_stock_data(agg, aggregate_interval, water_mark_window):
+    if aggregate_interval != 'second':
+        # Aggregate by aggregate_stock_data
+        agg = agg.withColumn('timestamp', date_trunc(aggregate_interval, col('timestamp')))
 
     agg = agg.withWatermark('timestamp', water_mark_window) \
         .groupBy('ticker_symbol', 'timestamp').agg(
@@ -155,23 +156,28 @@ def write_to_mongo(df, interval, database, collection, mode='complete'):
     dfStream.awaitTermination()
 
 
-def mean_reversion_strategy(agg, moving_average_minute, threshold):
-    # Define window for moving average calculation
-    windowSpec = Window.orderBy("timestamp").rangeBetween(-moving_average_minute, 0)  # 30 seconds window
-
-    # Calculate moving average and add as a new column
-    agg = agg.withColumn(
-        "moving_avg_price",
-        avg("wclose").over(windowSpec)
+def mean_reversion_strategy(df_with_watermark, moving_average_window, threshold):
+    # Calculate moving average using a time-based window of 30 seconds
+    moving_average_name = f"moving_avg_{'_'.join(moving_average_window.split(' '))}"
+    agg = df_with_watermark.groupBy(
+        "ticker_symbol",
+        window(col("timestamp"), moving_average_window),  # 30 seconds window
+        "wclose"  # Group by price to calculate its average per window
+    ).agg(
+        last("wopen").alias("wopen"),
+        last("whigh").alias("whigh"),
+        last("wlow").alias("wlow"),
+        avg("wclose").alias(moving_average_name)
     )
 
     # Create the mean reversion signal column
     agg = agg.withColumn(
         'mean_reversion_signal',
-        when((col('wclose') - col('moving_avg_price')) / col(f'moving_avg_price') > threshold, 1)
-        .when((col('wclose') - col('moving_avg_price')) / col('moving_avg_price') < -threshold, -1)
+        when((col('wclose') - col(moving_average_name)) / col(moving_average_name) > threshold, 1)
+        .when((col('wclose') - col(moving_average_name)) / col(moving_average_name) < -threshold, -1)
         .otherwise(0)
     )
+    agg.show()
     return agg
 
 print("*"*50 + "\n"+ "Start")
@@ -181,17 +187,19 @@ stock_data = preprocess(load_data())
 #write_to_console(stock_data, '30 second', mode='update')
 
 # user input
-#window = '60 minute' # 60 data points
-threshold = 0.01
-water_mark_window = '2 minute'
-minute_stock_data = aggregate_by_minute(stock_data, water_mark_window)
+#window = '60 minute' # 60 data poin
+aggregate_interval = 'second'
+water_mark_window = '1 minute'
+minute_stock_data = aggregate_stock_data(stock_data, aggregate_interval, water_mark_window)
 print('='*50 + '\nAfter data handling:')
-moving_average_minute = 30
-data_signal = mean_reversion_strategy(minute_stock_data, moving_average_minute, threshold)
-write_to_console(data_signal,  '3 minute',mode='append')
+
+threshold = 0.01
+moving_average_window = '10 second'
+data_signal = mean_reversion_strategy(minute_stock_data, moving_average_window, threshold)
+write_to_console(data_signal,  '2 minute',mode='append')
 print('*'*50)
 
-#minute_stock_data = df1.union(df2)
+
 # write_to_mongo(minute_stock_data, '60 second', 'stock', 'minute-stock-data')
 
 # Add signal (TODO)
