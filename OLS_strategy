@@ -1,0 +1,133 @@
+import numpy as np
+import pandas as pd
+import yfinance as yf
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+
+def get_closed_price(sign, start_date, end_date):
+    stock = yf.Ticker(sign)
+    df = stock.history(start=start_date, end=end_date)
+    df = df[['Close']]  # get the close price
+    return df
+
+def Strategy_linearOLS_regression(df, ticker):
+    df['returns'] = np.log(df['Close'] / df['Close'].shift(1))
+    df.dropna(inplace=True)
+    df['direction'] = np.sign(df['returns']).astype(int)
+
+    lags = 2
+
+    cols = []
+    for lag in range(1, lags + 1):
+        col = f'lag_{lag}'
+        df[col] = df['returns'].shift(lag)
+        cols.append(col)
+    df.dropna(inplace=True)
+
+    model = LinearRegression()
+    df['pos_ols_1'] = model.fit(df[cols], df['returns']).predict(df[cols])
+    df['pos_ols_2'] = model.fit(df[cols], df['direction']).predict(df[cols])
+    df[['pos_ols_1', 'pos_ols_2']] = np.where(df[['pos_ols_1', 'pos_ols_2']] > 0, 1, -1)
+
+    df['strat_ols_1'] = df['pos_ols_1'] * df['returns']
+    df['strat_ols_2'] = df['pos_ols_2'] * df['returns']
+
+    df['positions_ols_1'] = df['pos_ols_1'].diff()
+    df['positions_ols_2'] = df['pos_ols_2'].diff()
+
+    # Cumulative returns
+    df['cum_returns'] = df['returns'].cumsum().apply(np.exp)
+    df['cum_strat_ols_1'] = df['strat_ols_1'].cumsum().apply(np.exp)
+    df['cum_strat_ols_2'] = df['strat_ols_2'].cumsum().apply(np.exp)
+
+    # Create a subplot
+    fig = make_subplots(rows=1, cols=1)
+
+    # Add trace for original returns
+    fig.add_trace(
+        go.Scatter(x=df.index, y=df['cum_returns'], mode='lines', name='Original Returns'),
+        row=1, col=1
+    )
+
+    # Add trace for strategy 1 returns
+    fig.add_trace(
+        go.Scatter(x=df.index, y=df['cum_strat_ols_1'], mode='lines', name='Strategy 1 Returns'),
+        row=1, col=1
+    )
+
+    # Add trace for strategy 2 returns
+    fig.add_trace(
+        go.Scatter(x=df.index, y=df['cum_strat_ols_2'], mode='lines', name='Strategy 2 Returns'),
+        row=1, col=1
+    )
+
+    # Add markers for buy and sell signals for strategy 1
+    fig.add_trace(
+        go.Scatter(
+            x=df[df['positions_ols_1'] == 1].index,
+            y=df['cum_strat_ols_1'][df['positions_ols_1'] == 1],
+            mode='markers',
+            marker=dict(color='green', size=10, line=dict(width=2, color='black')),
+            name='Buy Signal S1'
+        ),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df[df['positions_ols_1'] == -1].index,
+            y=df['cum_strat_ols_1'][df['positions_ols_1'] == -1],
+            mode='markers',
+            marker=dict(color='red', size=10, line=dict(width=2, color='black')),
+            name='Sell Signal S1'
+        ),
+        row=1, col=1
+    )
+
+    # Add markers for buy and sell signals for strategy 2
+    fig.add_trace(
+        go.Scatter(
+            x=df[df['positions_ols_2'] == 1].index,
+            y=df['cum_strat_ols_2'][df['positions_ols_2'] == 1],
+            mode='markers',
+            marker=dict(color='yellow', size=10, line=dict(width=2, color='black')),
+            name='Buy Signal S2'
+        ),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df[df['positions_ols_2'] == -1].index,
+            y=df['cum_strat_ols_2'][df['positions_ols_2'] == -1],
+            mode='markers',
+            marker=dict(color='black', size=10, line=dict(width=2, color='yellow')),
+            name='Sell Signal S2'
+        ),
+        row=1, col=1
+    )
+
+    # Update layout for better readability
+    fig.update_layout(
+        title=f'{ticker} Cumulative Returns Comparison',
+        xaxis_title='Date',
+        yaxis_title='Cumulative Returns',
+        legend_title='Legend',
+        font=dict(
+            family="Courier New, monospace",
+            size=18,
+            color="RebeccaPurple"
+        )
+    )
+
+    # Show the figure
+    fig.show()
+
+    # Optional: Returning strategy stats or plot directly
+    return df
+
+for ticker in ['AAPL','AMZN','GOOG']:
+    df = get_closed_price(ticker, '2022-01-01', '2024-04-26')
+    quantResult = Strategy_linearOLS_regression(df,ticker)
