@@ -26,7 +26,7 @@ option = {
     },
     title: {
         left: 'center',
-        text: 'Large Area Chart'
+        text: 'Stock market data'
     },
     toolbox: {
         feature: {
@@ -47,15 +47,15 @@ option = {
         boundaryGap: [0, '100%']
     },
     dataZoom: [
-        // {
-        //     type: 'inside',
-        //     start: 0,
-        //     end: 10
-        // },
-        // {
-        //     start: 0,
-        //     end: 10
-        // }
+        {
+            type: 'inside',
+            start: 0,
+            end: 10
+        },
+        {
+            start: 0,
+            end: 10,
+        }
     ],
     series: [
         {
@@ -108,5 +108,7 @@ ws.onmessage = function (event) {
 
     // remove data front
     if (data.length > 20) data.slice(1), date.slice(1);
+    zoom = myChart.getOption().dataZoom
+    option.zoom = zoom
     myChart.setOption(option);
 };

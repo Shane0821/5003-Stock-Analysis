@@ -12,6 +12,8 @@
     - webdriver_manager
     ```
     pip install kafka-python selenium webdriver_manager
+
+    pip install asyncio aiokafka websockets
     ```
 
 ## Commands
