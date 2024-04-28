@@ -135,7 +135,7 @@ def write_to_console(df, interval, mode='update'):
     dfStream = df.writeStream \
         .outputMode(mode) \
         .format("console") \
-        .trigger(continuous=interval) \
+        .trigger(processingTime=interval) \
         .start()
 
     dfStream.awaitTermination()
@@ -156,10 +156,20 @@ def write_to_mongo(df, interval, database, collection, mode='complete'):
 print("start")
 
 stock_data = preprocess(load_data())
-# write_to_console(stock_data, '60 second')
 
-minute_stock_data = aggregate_by_minute(stock_data, '2 minute')
-write_to_mongo(minute_stock_data, '60 second', 'stock', 'minute-stock-data')
+mag = stock_data.groupBy(
+        'ticker_symbol',
+        window('timestamp', '60 seconds', '5 seconds')
+    ).agg(
+        avg('regular_market_price').alias('avg_price'),
+        last('regular_market_price').alias('regular_market_price'),
+        col('window').getField('end').alias('end'),
+        col('window').getField('start').alias('start'),
+        last('timestamp').alias('timestamp')
+    )
+
+write_to_console(mag, '5 seconds', 'complete')
+
 
 # Add signal (TODO)
 # agg = agg.withColumn('signal', 
