@@ -36,6 +36,9 @@ After starting kafka and spark, execute:
 ```
 python3 register_topic.py
 python3 data_producer.py
+
+python3 kafka_ws_producer.py
+python3 kafka_websocket.py
 ```
 This will start scrapers which send data to kafka.
 
