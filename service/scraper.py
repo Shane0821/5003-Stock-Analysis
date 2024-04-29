@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.common import TimeoutException
 import time
 import threading
+import random
 
 class Scraper:
     def __init__(self, ticker_symbol, on_data):
@@ -32,8 +33,9 @@ class Scraper:
             regular_market_data = self.get_regular_market_data()
 
             raw_data = regular_market_data | summary_data
-            
-            self.on_data(self.ticker_symbol, raw_data)
+
+            print(raw_data)            
+            # self.on_data(self.ticker_symbol, raw_data)
             
             time.sleep(5)
 
@@ -57,6 +59,14 @@ class Scraper:
             regular_market_change_percent = self.driver.find_element(
                 By.CSS_SELECTOR, f'[data-symbol="{self.ticker_symbol}"][data-testid="qsp-price-change-percent"]').text
             
+            # Convert regular market price to float
+            regular_market_price_float = float(regular_market_price)
+            
+            regular_market_price_float += random.uniform(-10.00, 10.00)
+            
+            # Convert back to string
+            regular_market_price = str(regular_market_price_float)
+
             data = {}
             data['regular_market_price'] = regular_market_price
             data['regular_market_change'] = regular_market_change
