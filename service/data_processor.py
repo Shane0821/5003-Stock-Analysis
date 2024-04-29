@@ -107,7 +107,7 @@ def preprocess(df):
 def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi_threshold=70):
     stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
 
-    stock_data = stock_data.groupBy(
+    stock_data = stock_data.withWatermark('timestamp', f'{ma_len} seconds').groupBy(
             'ticker_symbol',
             window('timestamp', f'{ma_len} seconds', f'{process_interval} seconds')
         ) \
@@ -123,6 +123,7 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi
 
     stock_data = stock_data.filter(col('end') <= current_timestamp())
 
+    # mean reversion signal
     stock_data = stock_data.withColumn(
             'mean_reversion_signal',
             when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, 1)
@@ -130,6 +131,7 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi
             .otherwise(0)
         )
 
+    # RSI signal
     stock_data = stock_data.withColumn(
         'rsi_signal',
         when(100 - (100 / (1 + ((col('max_price') - col('moving_avg_price')) / (col('moving_avg_price') - col('min_price'))))) > rsi_threshold, -1)
@@ -163,7 +165,7 @@ def write_to_mongo(df, database, collection, interval, mode='complete'):
     .start()
 
     dfStream.awaitTermination()
-
+    
 
 print("start")
 
@@ -173,10 +175,11 @@ ma_len = 300
 
 stock_data = preprocess(load_data())
 
-# write_to_mongo(stock_data, database, "real-time-stock-data-test", interval='5 seconds', mode='append')
+# write_to_mongo(stock_data, database, "real-time-stock-data-test", f'{process_interval} seconds', 'append')
+# write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'update')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-write_to_mongo(data_with_signal, database, 'signal-test', f'{process_interval} seconds', 'complete')
+write_to_mongo(data_with_signal, database, 'signal-test', f'{process_interval} seconds', 'append')
 
 print("end")
