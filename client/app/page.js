@@ -49,13 +49,14 @@ for (var i = 0; i < 180; i++) {
   data.push(randomData());
 }
 
+const ws = new WebSocket("ws://localhost:8766/");
+
 export default function Home() {
   const [time, setTime] = useState(null);
 
-  // const ws = new WebSocket("ws://localhost:8766/");
   const [option, setOption] = useState({
     title: {
-      text: 'Dynamic Data & Time Axis'
+      text: 'Dynamic Data & Time Axis (GOOG)'
     },
     tooltip: {
       trigger: 'axis',
@@ -120,17 +121,23 @@ export default function Home() {
       setTime(new Date().toLocaleTimeString());
     }, 1000);
 
+    if (ws.OPEN) {
+      ws.onmessage = function (event) {
+        console.log(event);
+      }
+    }
+
     return () => {
       // ws.close();
       clearInterval(intervalId);
     }
-  })
+  }, [])
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between">
       <div className="z-10 w-full items-center justify-between font-mono text-sm">
-        <ReactECharts className="w-full h-full" style={{ height: '85vh' }} option={option} />
-        <div className="w-3/4 justify-center items-center font-mono">
+        <ReactECharts className="w-full" style={{ height: '85vh' }} option={option} />
+        <div className="grid justify-items-center font-mono">
           {data[data.length - 1] ? data[data.length - 1].name : ''}
         </div>
       </div>
