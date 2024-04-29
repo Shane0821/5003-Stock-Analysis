@@ -44,6 +44,7 @@ def load_data():
         StructField("1y_target_est", StringType())
         # Add more fields here based on your value structure
     ])
+
     ## Read Stream
     dfStream = spark \
         .readStream \
@@ -142,7 +143,7 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi
     return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'moving_avg_price', 'mean_reversion_signal', 'rsi_signal')
 
 
-def write_to_console(df, interval, mode='update'):
+def write_to_console(df, interval, mode='complete'):
     # Write to console
     dfStream = df.writeStream \
         .outputMode(mode) \
@@ -165,7 +166,52 @@ def write_to_mongo(df, database, collection, interval, mode='complete'):
     .start()
 
     dfStream.awaitTermination()
+
+def write_to_kafka(df, topic, interval, mode='complete'):
+    # Write to Kafka
+    if (topic == 'real-time-stock-data-processed'):
+        # Define the schema for the key and value
+        key_schema = StructType([
+            StructField("ticker_symbol", StringType()),
+            # Add more fields here based on your key structure
+        ])
+
+        value_schema = StructType([
+            StructField("regular_market_price", FloatType()),
+            StructField("regular_market_change", FloatType()),
+            StructField("regular_market_change_percent", FloatType()),
+            StructField("regular_market_previous_close", FloatType()),
+            StructField("regular_market_open", FloatType()),
+            StructField("bid_price", FloatType()),
+            StructField("bid_size", IntegerType()),
+            StructField("ask_price", FloatType()),
+            StructField("ask_size", IntegerType()),
+            StructField("regular_market_volume", LongType()),
+            StructField("average_volume", LongType()),
+            StructField("market_cap", FloatType()),
+            StructField("market_cap_type", IntegerType()),
+            StructField("beta", FloatType()),
+            StructField("pe_ratio", FloatType()),
+            StructField("eps", FloatType()),
+            StructField("1y_target_est", FloatType()),
+            StructField("timestamp", TimestampType())
+            # Add more fields here based on your value structure
+        ])
+
+        df = df.select(
+            F.to_json(F.struct([F.col(field.name) for field in value_schema])).alias("value"),
+            F.to_json(F.struct([F.col(field.name) for field in key_schema])).alias("key")
+        )
+
+    dfStream = df.writeStream \
+        .outputMode(mode) \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "172.16.0.3:9092") \
+        .option("topic", topic) \
+        .trigger(processingTime=interval) \
+        .start()
     
+    dfStream.awaitTermination()
 
 print("start")
 
@@ -176,10 +222,10 @@ ma_len = 300
 stock_data = preprocess(load_data())
 
 # write_to_mongo(stock_data, database, "real-time-stock-data-test", f'{process_interval} seconds', 'append')
-# write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'update')
+# write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-write_to_mongo(data_with_signal, database, 'signal-test', f'{process_interval} seconds', 'append')
+# write_to_mongo(data_with_signal, database, 'signal-test', f'{process_interval} seconds', 'append')
 
 print("end")
