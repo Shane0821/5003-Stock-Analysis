@@ -151,7 +151,7 @@ def write_to_console(df, interval, mode='update'):
     dfStream.awaitTermination()
 
 
-def write_to_mongo(df, interval, database, collection, mode='complete'):
+def write_to_mongo(df, database, collection, interval, mode='complete'):
     # Write to MongoDB
     dfStream = df.writeStream \
     .outputMode(mode) \
@@ -167,12 +167,16 @@ def write_to_mongo(df, interval, database, collection, mode='complete'):
 
 print("start")
 
+database = "stock"
+process_interval = 5
+ma_len = 300
+
 stock_data = preprocess(load_data())
 
-ma_len = 300
-process_interval = 5
+# write_to_mongo(stock_data, database, "real-time-stock-data-test", interval='5 seconds', mode='append')
+
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-write_to_console(data_with_signal, f'{process_interval} seconds', 'update')
+write_to_mongo(data_with_signal, database, 'signal-test', f'{process_interval} seconds', 'complete')
 
 print("end")
