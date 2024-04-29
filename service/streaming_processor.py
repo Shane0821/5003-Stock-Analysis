@@ -237,7 +237,7 @@ def write_to_kafka(df, topic, interval, mode='complete'):
 print("start")
 
 database = "stock"
-process_interval = 5
+process_interval = 1
 ma_len = 300
 
 stock_data = preprocess(load_data())
