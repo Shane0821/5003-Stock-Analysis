@@ -1,28 +1,57 @@
 "use client"
+
 import React, { useState, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
 
-let now = new Date(1997, 9, 3);
+let now = new Date();
 let oneDay = 24 * 3600 * 1000;
 let value = Math.random() * 1000;
+
+function getSymbolSize(value) {
+  if (value % 10 == 0) return 8;
+  else if (value % 10 == 1) return 11;
+  return 10;
+}
+
+function getSymbol(value) {
+  if (value % 10 == 0) return 'triangle';
+  else if (value % 10 == 1) return 'pin' // reverse triangle
+  return 'none'
+}
+
+function getItemStyle(value) {
+  if (value % 10 == 0) return {
+    color: 'green'
+  }
+  return {
+    color: 'red'
+  }
+}
+
 function randomData() {
   now = new Date(+now + oneDay);
   value = value + Math.random() * 21 - 10;
+
   return {
     name: now.toString(),
     value: [
-      [now.getFullYear(), now.getMonth() + 1, now.getDate()].join('/'),
+      [now.getFullYear(), now.getMonth(), now.getDate() + 1].join('/'),
       Math.round(value)
-    ]
+    ],
+    symbol: getSymbol(Math.trunc(value)),
+    itemStyle: getItemStyle(Math.trunc(value)),
+    symbolSize: getSymbolSize(Math.trunc(value))
   };
 }
 
 let data = [];
-for (var i = 0; i < 1000; i++) {
+for (var i = 0; i < 180; i++) {
   data.push(randomData());
 }
 
 export default function Home() {
+  const [time, setTime] = useState(null);
+
   // const ws = new WebSocket("ws://localhost:8766/");
   const [option, setOption] = useState({
     title: {
@@ -64,7 +93,11 @@ export default function Home() {
       {
         name: 'Fake Data',
         type: 'line',
-        showSymbol: false,
+        showSymbol: true,
+        symbolSize: 9,
+        markPoint: {
+          data: data
+        },
         data: data
       }
     ]
@@ -79,9 +112,12 @@ export default function Home() {
 
       setOption(option => {
         const newOption = JSON.parse(JSON.stringify(option));
+        newOption.series[0].markPoint.data = JSON.parse(JSON.stringify(data))
         newOption.series[0].data = JSON.parse(JSON.stringify(data))
         return newOption;
       });
+
+      setTime(new Date().toLocaleTimeString());
     }, 1000);
 
     return () => {
@@ -91,9 +127,14 @@ export default function Home() {
   })
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <ReactECharts className="w-full h-full" option={option} />
+    <main className="flex min-h-screen flex-col items-center justify-between">
+      <div className="z-10 w-full items-center justify-between font-mono text-sm">
+        <ReactECharts className="w-full h-full" style={{ height: '85vh' }} option={option} />
+      </div>
+      <div>
+        <h1 className="text-center text-xs text-gray-400">
+          {time ? `Last updated at ${time}` : ''}
+        </h1>
       </div>
     </main>
   );
