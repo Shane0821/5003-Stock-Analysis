@@ -243,7 +243,7 @@ ma_len = 300
 stock_data = preprocess(load_data())
 
 # write_to_mongo(stock_data, database, "real-time-stock-data-test", f'{process_interval} seconds', 'append')
-# write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
+write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
