@@ -248,7 +248,7 @@ stock_data = preprocess(load_data())
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
 # write_to_mongo(data_with_signal, database, 'signal-test-2', f'{process_interval} seconds', 'append')
-# write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'update')
-# write_to_console(data_with_signal, f'{process_interval} seconds', 'update')
+# write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'append')
+# write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
 
 print("end")
