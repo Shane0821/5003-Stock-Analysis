@@ -108,7 +108,7 @@ def preprocess(df):
 def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi_threshold=70):
     stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
 
-    stock_data = stock_data.withWatermark('timestamp', f'{ma_len} seconds').groupBy(
+    stock_data = stock_data.withWatermark('timestamp', f'{process_interval} seconds').groupBy(
             'ticker_symbol',
             window('timestamp', f'{ma_len} seconds', f'{process_interval} seconds')
         ) \
@@ -202,6 +202,27 @@ def write_to_kafka(df, topic, interval, mode='complete'):
             F.to_json(F.struct([F.col(field.name) for field in value_schema])).alias("value"),
             F.to_json(F.struct([F.col(field.name) for field in key_schema])).alias("key")
         )
+    
+    elif (topic == 'signal'):
+        # Define the schema for the key and value
+        key_schema = StructType([
+            StructField("ticker_symbol", StringType()),
+            # Add more fields here based on your key structure
+        ])
+
+        value_schema = StructType([
+            StructField("timestamp", TimestampType()),
+            StructField("moving_avg_price", FloatType()),
+            StructField("mean_reversion_signal", IntegerType()),
+            StructField("rsi_signal", IntegerType())
+            # Add more fields here based on your value structure
+        ])
+
+        df = df.select(
+            F.to_json(F.struct([F.col(field.name) for field in value_schema])).alias("value"),
+            F.to_json(F.struct([F.col(field.name) for field in key_schema])).alias("key")
+        )
+
 
     dfStream = df.writeStream \
         .outputMode(mode) \
@@ -226,6 +247,8 @@ stock_data = preprocess(load_data())
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-# write_to_mongo(data_with_signal, database, 'signal-test', f'{process_interval} seconds', 'append')
+# write_to_mongo(data_with_signal, database, 'signal-test-2', f'{process_interval} seconds', 'append')
+# write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'update')
+# write_to_console(data_with_signal, f'{process_interval} seconds', 'update')
 
 print("end")
