@@ -59,6 +59,7 @@ def load_data():
     ).select("timestamp", "key.*", "value.*")
     return df
 
+
 def preprocess(df):
     # Preprocess the data
     df = df.withColumn('regular_market_price', regexp_replace(col('regular_market_price'), ',', '').cast(FloatType()))
@@ -98,37 +99,46 @@ def preprocess(df):
     df = df.withColumn('beta', regexp_replace(col('beta'), '--', '0').cast(FloatType()))
     df = df.withColumn('pe_ratio', regexp_replace(col('pe_ratio'), '--', '0').cast(FloatType()))
     df = df.withColumn('eps', regexp_replace(col('eps'), '--', '0').cast(FloatType()))
-    df = df = df.withColumn('1y_target_est', when(col('1y_target_est') == '--', 0). \
+    df = df.withColumn('1y_target_est', when(col('1y_target_est') == '--', 0). \
                             otherwise(regexp_replace(col('1y_target_est'), ',', '')).cast(FloatType()))
     return df
 
-def aggregate_by_minute(df, window):
-    # Aggregate by mimute
-    agg = df.withColumn('timestamp', date_trunc('minute', col('timestamp')))
 
-    agg = agg.withWatermark('timestamp', window) \
-        .groupBy('ticker_symbol', 'timestamp').agg(
-            max('regular_market_price').alias('wmax__price'),
-            min('regular_market_price').alias('wmin_price'),
-            first('regular_market_price').alias('wopen'),
-            last('regular_market_price').alias('wclose'),
-            (last('regular_market_volume') - first('regular_market_volume')).alias('wvolume_change'),
-            
-            last('regular_market_previous_close').alias('regular_market_previous_close'),
-            last('regular_market_open').alias('regular_market_open'),
-            last('bid_price').alias('bid_price'),
-            last('bid_size').alias('bid_size'),
-            last('ask_price').alias('ask_price'),
-            last('ask_size').alias('ask_size'),
-            last('average_volume').alias('average_volume'),
-            last('market_cap').alias('market_cap'),
-            last('market_cap_type').alias('market_cap_type'),
-            last('beta').alias('beta'),
-            last('pe_ratio').alias('pe_ratio'),
-            last('eps').alias('eps'),
-            last('1y_target_est').alias('1y_target_est')
+def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi_threshold=70):
+    stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
+
+    stock_data = stock_data.groupBy(
+            'ticker_symbol',
+            window('timestamp', f'{ma_len} seconds', f'{process_interval} seconds')
+        ) \
+        .agg(
+            last('regular_market_price').alias('regular_market_price'),
+            avg('regular_market_price').alias('moving_avg_price'),
+            max('regular_market_price').alias('max_price'),
+            min('regular_market_price').alias('min_price'),
+            last('timestamp').alias('timestamp'),
+            col('window').getField('start').alias('start'),
+            col('window').getField('end').alias('end'),
         )
-    return agg
+
+    stock_data = stock_data.filter(col('end') <= current_timestamp())
+
+    stock_data = stock_data.withColumn(
+            'mean_reversion_signal',
+            when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, 1)
+            .when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') < -ma_threshold_perc, -1)
+            .otherwise(0)
+        )
+
+    stock_data = stock_data.withColumn(
+        'rsi_signal',
+        when(100 - (100 / (1 + ((col('max_price') - col('moving_avg_price')) / (col('moving_avg_price') - col('min_price'))))) > rsi_threshold, -1)
+        .when(100 - (100 / (1 + ((col('max_price') - col('moving_avg_price')) / (col('moving_avg_price') - col('min_price'))))) < 100 - rsi_threshold, 1)
+        .otherwise(0)
+    )
+
+    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'moving_avg_price', 'mean_reversion_signal', 'rsi_signal')
+
 
 def write_to_console(df, interval, mode='update'):
     # Write to console
@@ -139,6 +149,7 @@ def write_to_console(df, interval, mode='update'):
         .start()
 
     dfStream.awaitTermination()
+
 
 def write_to_mongo(df, interval, database, collection, mode='complete'):
     # Write to MongoDB
@@ -153,28 +164,15 @@ def write_to_mongo(df, interval, database, collection, mode='complete'):
 
     dfStream.awaitTermination()
 
+
 print("start")
 
 stock_data = preprocess(load_data())
 
-mag = stock_data.groupBy(
-        'ticker_symbol',
-        window('timestamp', '60 seconds', '5 seconds')
-    ).agg(
-        avg('regular_market_price').alias('avg_price'),
-        last('regular_market_price').alias('regular_market_price'),
-        col('window').getField('end').alias('end'),
-        col('window').getField('start').alias('start'),
-        last('timestamp').alias('timestamp')
-    )
+ma_len = 300
+process_interval = 5
+data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-write_to_console(mag, '5 seconds', 'complete')
-
-
-# Add signal (TODO)
-# agg = agg.withColumn('signal', 
-#                      when(col('wclose') > col('wopen'), 1)
-#                      .when(col('wclose') < col('wopen'), -1)
-#                      .otherwise(0))
+write_to_console(data_with_signal, f'{process_interval} seconds', 'update')
 
 print("end")
