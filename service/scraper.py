@@ -34,8 +34,8 @@ class Scraper:
 
             raw_data = regular_market_data | summary_data
 
-            print(raw_data)            
-            # self.on_data(self.ticker_symbol, raw_data)
+            # print(raw_data)            
+            self.on_data(self.ticker_symbol, raw_data)
             
             time.sleep(5)
 
@@ -61,11 +61,17 @@ class Scraper:
             
             # Convert regular market price to float
             regular_market_price_float = float(regular_market_price)
+            regular_market_change_float = float(regular_market_change)
+
+            diff = random.uniform(-10.00, 10.00)
             
-            regular_market_price_float += random.uniform(-10.00, 10.00)
-            
+            regular_market_change_float += diff
+            regular_market_change_percent = f"({round((regular_market_change_float / regular_market_price_float) * 100, 2)}%)"
+            regular_market_price_float += diff
+
             # Convert back to string
             regular_market_price = str(regular_market_price_float)
+            regular_market_change = str(regular_market_change_float)
 
             data = {}
             data['regular_market_price'] = regular_market_price
