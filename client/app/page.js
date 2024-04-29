@@ -130,7 +130,11 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-between">
       <div className="z-10 w-full items-center justify-between font-mono text-sm">
         <ReactECharts className="w-full h-full" style={{ height: '85vh' }} option={option} />
+        <div className="w-3/4 justify-center items-center font-mono">
+          {data[data.length - 1] ? data[data.length - 1].name : ''}
+        </div>
       </div>
+
       <div>
         <h1 className="text-center text-xs text-gray-400">
           {time ? `Last updated at ${time}` : ''}
