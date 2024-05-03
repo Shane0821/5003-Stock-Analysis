@@ -3,6 +3,8 @@ from pyspark.sql.functions import *
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.regression import LinearRegression
 
 ## Create a spark session
 spark = SparkSession \
@@ -205,11 +207,61 @@ def get_rsi_signal(agg):
     agg = agg.drop("gain","loss",'avg_gain','avg_loss')
     return agg
 
+def ols_strategy(df):
+    # 假设 df 已经是一个 Spark DataFrame，并已加载数据
+    # 计算日收益率
+    df = df.withColumn('returns', log(col('regular_market_price') / lag(col('regular_market_price'), 1).over(Window.orderBy("timestamp"))))
+    df = df.na.drop()
+
+    # 计算方向
+    df = df.withColumn('direction', signum(col('returns')).cast('int'))
+
+    # 生成滞后特征
+    lags = 2
+    cols = []
+    for lag in range(1, lags + 1):
+        col_name = f'lag_{lag}'
+        df = df.withColumn(col_name, lag(col('returns'), lag).over(Window.orderBy("timestamp")))
+        cols.append(col_name)
+    df = df.na.drop()
+
+    # 向量化特征用于线性回归
+    vectorAssembler = VectorAssembler(inputCols=cols, outputCol="features")
+    df = vectorAssembler.transform(df)
+
+    # 线性回归模型
+    lr = LinearRegression(featuresCol='features', labelCol='returns')
+
+    # 模型训练和预测（pos_ols_1）
+    model_1 = lr.fit(df)
+    df = model_1.transform(df).withColumn('pos_ols_1', signum(col('prediction')).cast('int')).drop('prediction')
+
+    # 更改labelCol为'direction'进行训练和预测（pos_ols_2）
+    lr.setLabelCol('direction')
+    model_2 = lr.fit(df)
+    df = model_2.transform(df).withColumn('pos_ols_2', signum(col('prediction')).cast('int')).drop('prediction')
+
+    # 计算策略收益
+    df = df.withColumn('strat_ols_1', col('pos_ols_1') * col('returns'))
+    df = df.withColumn('strat_ols_2', col('pos_ols_2') * col('returns'))
+
+    # 计算仓位变动
+    df = df.withColumn('positions_ols_1', col('pos_ols_1') - lag(col('pos_ols_1'), 1).over(Window.orderBy("timestamp")))
+    df = df.withColumn('positions_ols_2', col('pos_ols_2') - lag(col('pos_ols_2'), 1).over(Window.orderBy("timestamp")))
+
+    # 计算累计收益
+    df = df.withColumn('cum_returns', exp(sum(col('returns')).over(Window.orderBy("timestamp"))))
+    df = df.withColumn('cum_strat_ols_1', exp(sum(col('strat_ols_1')).over(Window.orderBy("timestamp"))))
+    df = df.withColumn('cum_strat_ols_2', exp(sum(col('strat_ols_2')).over(Window.orderBy("timestamp"))))
+    return df
+
 print("*"*50 + "\n"+ "Start data preprocessing")
 # basic data frequency: per 5 seconds
 stock_data = preprocess(load_data())
 #print('-'*50 + '\nData Input:')
-#write_to_console(stock_data, '30 second', mode='update')
+print('='*50 + '\nStart to create ols signal:')
+data_signal = ols_strategy(stock_data)
+write_to_console(data_signal, '30 second', mode='update')
 
 # user input
 #window = '60 minute' # 60 data poin
@@ -219,12 +271,14 @@ water_mark_window = '20 second'
 moving_average_window = '10 second'
 aggregate_data = aggregate_stock_data(stock_data, aggregate_interval, water_mark_window, moving_average_window)
 
-print('='*50 + '\nStart to create mean-reversion signal:')
-ma_threshold_perc = 0.01
-data_signal = mean_reversion_strategy(aggregate_data, ma_threshold_perc)
 
-print('='*50 + '\nStart to create rsi signal:')
-data_signal = get_rsi_signal(data_signal)
+
+#print('='*50 + '\nStart to create mean-reversion signal:')
+#ma_threshold_perc = 0.01
+#data_signal = mean_reversion_strategy(aggregate_data, ma_threshold_perc)
+
+#print('='*50 + '\nStart to create rsi signal:')
+#data_signal = get_rsi_signal(data_signal)
 
 print('='*50 + '\nFinish signal creation')
 write_to_console(data_signal,  '30 second',mode='update')
