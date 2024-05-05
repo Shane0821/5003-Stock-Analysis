@@ -237,18 +237,18 @@ def write_to_kafka(df, topic, interval, mode='complete'):
 print("start")
 
 database = "stock"
-process_interval = 1
+process_interval = 5
 ma_len = 300
 
 stock_data = preprocess(load_data())
 
 # write_to_mongo(stock_data, database, "real-time-stock-data-test", f'{process_interval} seconds', 'append')
-write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
+# write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
 # write_to_mongo(data_with_signal, database, 'signal-test-2', f'{process_interval} seconds', 'append')
 # write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'append')
-# write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
+write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
 
 print("end")
