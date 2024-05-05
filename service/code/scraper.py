@@ -37,7 +37,7 @@ class Scraper:
             # print(raw_data)            
             self.on_data(self.ticker_symbol, raw_data)
             
-            time.sleep(5)
+            time.sleep(1)
 
     def start(self):
         self.driver.get(f'https://finance.yahoo.com/quote/{self.ticker_symbol}')
