@@ -35,6 +35,11 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: kafka-topics --bootstrap-server localhost:9092 --list
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   spark-master:
     image: bitnami/spark:3.4.3
@@ -75,3 +80,14 @@ services:
       - "8082:8081"
     environment:
       - "SPARK_MODE=worker"
+
+  topic-registery:
+    image: topic-register:latest
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.10
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+  
