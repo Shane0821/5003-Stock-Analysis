@@ -48,7 +48,7 @@ services:
     environment:
       - "SPARK_MODE=master"
     volumes:
-      - .:/tmp/code
+      - ./code:/tmp/code
 
   spark-worker-1:
     image: bitnami/spark:3.4.3
