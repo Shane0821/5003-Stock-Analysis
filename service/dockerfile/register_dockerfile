@@ -1,0 +1,5 @@
+FROM python:3.11.9
+WORKDIR /app
+COPY ../code/register_topic.py .
+RUN pip install kafka-python==2.0.2
+CMD ["python3", "./register_topic.py"]
