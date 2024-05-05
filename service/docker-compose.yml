@@ -81,7 +81,7 @@ services:
     environment:
       - "SPARK_MODE=worker"
 
-  topic-registery:
+  topic-registry:
     image: topic-register:latest
     networks:
       app-network:
@@ -90,4 +90,5 @@ services:
       kafka:
         condition: service_healthy
         restart: true
+  
   
