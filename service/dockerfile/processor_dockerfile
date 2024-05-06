@@ -1,0 +1,4 @@
+FROM bitnami/spark:3.4.3
+WORKDIR /opt/bitnami/spark
+COPY ../code/streaming_processor.py .
+CMD ["spark-submit", "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.3,org.mongodb.spark:mongo-spark-connector_2.12:10.2.1", "./streaming_processor.py"]
