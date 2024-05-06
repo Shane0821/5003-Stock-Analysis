@@ -17,11 +17,11 @@ MSBD 5003 Group Project.
   - asyncio
   - aiokafka
   - websockets
-    ```
-    pip install kafka-python selenium webdriver_manager
+  ```
+  pip install kafka-python selenium webdriver_manager
 
-    pip install asyncio aiokafka websockets
-    ```
+  pip install asyncio aiokafka websockets
+  ```
 #### Commands
 Go to service directory:
 ```
