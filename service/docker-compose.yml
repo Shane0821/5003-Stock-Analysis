@@ -90,5 +90,14 @@ services:
       kafka:
         condition: service_healthy
         restart: true
-  
+
+  producer:
+    image: data-producer:latest
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.10
+    depends_on:
+      topic-registry:
+        condition: service_completed_successfully
+        restart: true
   
