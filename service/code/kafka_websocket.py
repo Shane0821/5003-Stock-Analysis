@@ -44,7 +44,7 @@ class KafkaWebSocketServer:
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
 
-kafka_bootstrap_servers = '172.16.0.3:9092'
+kafka_bootstrap_servers = 'kafka:9092'
 kafka_topics = ['real-time-stock-data-processed', 'signal']
 websocket_host = 'localhost'
 websocket_port = 8766

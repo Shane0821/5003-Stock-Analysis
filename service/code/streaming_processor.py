@@ -6,7 +6,7 @@ from pyspark.sql.types import *
 ## Create a spark session
 spark = SparkSession \
     .builder \
-    .master('spark://172.16.0.4:7077') \
+    .master('spark://spark-master:7077') \
     .appName("streaming processor") \
     .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.3") \
     .config("spark.sql.streaming.checkpointLocation", "/tmp/spark/checkpoint") \
@@ -17,7 +17,7 @@ spark.sparkContext.setLogLevel("ERROR")
 def load_data():
     ## Kafka configs
     kafka_input_config = {
-        "kafka.bootstrap.servers" : "172.16.0.3:9092",
+        "kafka.bootstrap.servers" : "kafka:9092",
         "subscribe" : "real-time-stock-data",
         "startingOffsets" : "latest",
         "failOnDataLoss" : "false"
@@ -229,7 +229,7 @@ def write_to_kafka(df, topic, interval, mode='complete'):
     dfStream = df.writeStream \
         .outputMode(mode) \
         .format("kafka") \
-        .option("kafka.bootstrap.servers", "172.16.0.3:9092") \
+        .option("kafka.bootstrap.servers", "kafka:9092") \
         .option("topic", topic) \
         .trigger(processingTime=interval) \
         .start()
