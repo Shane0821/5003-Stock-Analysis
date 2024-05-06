@@ -110,7 +110,7 @@ def preprocess(df):
 def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi_threshold=70):
     stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
 
-    stock_data = stock_data.withWatermark('timestamp', f'{process_interval} seconds').groupBy(
+    stock_data = stock_data.withWatermark('timestamp', f'1 second').groupBy(
             'ticker_symbol',
             window('timestamp', f'{ma_len} seconds', f'{process_interval} seconds')
         ) \
