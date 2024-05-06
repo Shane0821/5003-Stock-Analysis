@@ -1,20 +1,5 @@
 # 5003-Project
-
-## Requirement
-- google chrome
-  ```
-  sudo apt-get install google-chrome-stable 
-  ```
-- docker desktop
-- python (3.9+), with:
-    - kafka-python
-    - selenium
-    - webdriver_manager
-    ```
-    pip install kafka-python selenium webdriver_manager
-
-    pip install asyncio aiokafka websockets
-    ```
+MSBD 5003 Group Project.
 
 ## How to Use
 ### Test locally
