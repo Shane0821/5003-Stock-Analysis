@@ -135,8 +135,8 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi
     # RSI signal
     stock_data = stock_data.withColumn(
         'rsi_signal',
-        when(100 - (100 / (1 + ((col('max_price') - col('moving_avg_price')) / (col('moving_avg_price') - col('min_price'))))) > rsi_threshold, -1)
-        .when(100 - (100 / (1 + ((col('max_price') - col('moving_avg_price')) / (col('moving_avg_price') - col('min_price'))))) < 100 - rsi_threshold, 1)
+        when(100 - (100 / (1 + ((col('max_price') - col('regular_market_price')) / (col('regular_market_price') - col('min_price'))))) > rsi_threshold, -1)
+        .when(100 - (100 / (1 + ((col('max_price') - col('regular_market_price')) / (col('regular_market_price') - col('min_price'))))) < 100 - rsi_threshold, 1)
         .otherwise(0)
     )
 
