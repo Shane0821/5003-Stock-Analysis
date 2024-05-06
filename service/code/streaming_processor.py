@@ -12,6 +12,8 @@ spark = SparkSession \
     .config("spark.sql.streaming.checkpointLocation", "/tmp/spark/checkpoint") \
     .getOrCreate()
 
+spark.sparkContext.setLogLevel("ERROR")
+
 def load_data():
     ## Kafka configs
     kafka_input_config = {
