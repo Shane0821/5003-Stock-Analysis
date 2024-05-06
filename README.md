@@ -163,3 +163,5 @@ To stop all the services, execute:
 sudo chmod +x ./stop_service.sh
 ./stop_service.sh
 ```
+
+**Note**: remember to rebuild images after chaning the code.
