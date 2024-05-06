@@ -1,4 +1,4 @@
-FROM python:3.11.9
+FROM python:3.11.9-slim
 WORKDIR /app
 COPY ../code/register_topic.py .
 RUN pip install kafka-python==2.0.2

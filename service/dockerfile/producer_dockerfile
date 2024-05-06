@@ -1,0 +1,13 @@
+FROM python:3.11.9
+WORKDIR /app
+COPY ../code/scraper.py .
+COPY ../code/data_producer.py .
+RUN pip install kafka-python==2.0.2 selenium==4.19.0 webdriver-manager==4.0.1 && \
+    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt update -y && \
+    apt upgrade -y && \
+    dpkg -i google-chrome-stable_current_amd64.deb || true && apt -f -y install && \
+    dpkg -i google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb && \
+    apt autoremove -y && apt clean -y 
+CMD ["python3", "./data_producer.py"]
