@@ -130,7 +130,7 @@ python3 ./code/kafka_ws_producer.py
 python3 ./code/kafka_websocket.py
 ```
 
-### Deployment
+### Local Deployment
 #### Requirements
 - OS: linux
 - Docker desktop installed.
