@@ -6,7 +6,6 @@ from pyspark.sql.types import *
 ## Create a spark session
 spark = SparkSession \
     .builder \
-    .master('spark://spark-master:7077') \
     .appName("streaming processor") \
     .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1") \
     .config("spark.sql.streaming.checkpointLocation", "/tmp/spark/checkpoint") \
