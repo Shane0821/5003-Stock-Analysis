@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: register-topic
+spec:
+  template:
+    spec:
+      containers:
+      - name: topic-register
+        image: shane233/topic-register:latest
+        imagePullPolicy: Always
+      restartPolicy: Never
+      enableServiceLinks: false
+  backoffLimit: 3
