@@ -60,7 +60,7 @@ services:
     environment:
       - "SPARK_MODE=worker"
 
-  topic-registry:
+  topic-register:
     image: topic-register:latest
     depends_on:
       kafka:
@@ -70,15 +70,15 @@ services:
   producer:
     image: data-producer:latest
     depends_on:
-      topic-registry:
+      topic-register:
         condition: service_completed_successfully
         restart: true
-  
+
   processor:
     image: streaming-processor:latest
     container_name: spark-streaming-processor
     depends_on:
-      topic-registry:
+      topic-register:
         condition: service_completed_successfully
         restart: true
       spark-master:
