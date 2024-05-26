@@ -71,6 +71,8 @@ services:
       - "7077:7077"
     environment:
       - "SPARK_MODE=master"
+    volume:
+      - ./code:/tmp/code
 
   spark-worker-1:
     image: bitnami/spark:3.4.1
