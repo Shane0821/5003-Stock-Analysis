@@ -10,24 +10,25 @@ let seconds = 3 * 60 * 1000;
 let value = Math.random() * 1000;
 
 let data = [];
+let signal = [];
 // for (var i = 0; i < 100; i++) {
 //   data.push(randomData());
 // }
 
-function getSymbolSize(value) {
-  if (value % 10 == 0) return 8;
-  else if (value % 10 == 1) return 11;
+function getSymbolSize(v1, v2) {
+  if (v1 == 1 && v2 == 1) return 8;
+  else if (v1 == -1 && v2 == -1) return 11;
   return 10;
 }
 
-function getSymbol(value) {
-  if (value % 10 == 0) return 'triangle';
-  else if (value % 10 == 1) return 'pin' // reverse triangle
+function getSymbol(v1, v2) {
+  if (v1 == 1 && v2 == 1) return 'triangle'; // buy 1 sell -1
+  else if (v1 == -1 && v2 == -1) return 'pin'
   return 'none'
 }
 
-function getItemStyle(value) {
-  if (value % 10 == 0) return {
+function getItemStyle(v1, v2) {
+  if (v1 == 1 && v2 == 1) return {
     color: 'green'
   }
   return {
@@ -65,14 +66,37 @@ function addNewStockData(_data) {
       value,
       [now.getFullYear(), now.getMonth(), now.getDate() + 1].join('/'),
     ],
-    symbol: getSymbol(Math.trunc(value)),
-    itemStyle: getItemStyle(Math.trunc(value)),
-    symbolSize: getSymbolSize(Math.trunc(value))
+    symbol: 'none',
+    symbolSize: 10
   };
 
   if (data.length >= size) data.shift();
   else if (data.length > 0 && data[0].value[0] < newData.value[0] - seconds + 100) data.shift();
   data.push(newData)
+}
+
+function addNewSignal(_data) {
+  console.log('signal: ', _data)
+
+  now = new Date(_data.timestamp);
+  value = _data.moving_avg_price;
+
+  const newData = {
+    name: now.toString(),
+    value: [
+      // [now.getHours(), now.getMinutes(), now.getSeconds()].join('/'),
+      now.getTime(),
+      value,
+      [now.getFullYear(), now.getMonth(), now.getDate() + 1].join('/'),
+    ],
+    symbol: getSymbol(_data.rsi_signal, _data.mean_reversion_signal),
+    itemStyle: getItemStyle(_data.rsi_signal, _data.mean_reversion_signal),
+    symbolSize: getSymbolSize(_data.rsi_signal, _data.mean_reversion_signal)
+  };
+
+  if (signal.length >= size) signal.shift();
+  else if (signal.length > 0 && signal[0].value[0] < newData.value[0] - seconds + 100) signal.shift();
+  signal.push(newData)
 }
 
 export default function Home() {
@@ -154,8 +178,18 @@ export default function Home() {
     },
     series: [
       {
-        name: 'Fake Data',
+        name: 'Data',
         type: 'line',
+        showSymbol: true,
+        symbolSize: 9,
+        markPoint: {
+          data: data
+        },
+        data: data
+      },
+      {
+        name: 'Signal',
+        type: 'scatter',
         showSymbol: true,
         symbolSize: 9,
         markPoint: {
@@ -207,7 +241,14 @@ export default function Home() {
         setRegularMarketPrice(newData.regular_market_price);
         setRegularMarketVolume(newData.regular_market_volume);
       } else if (newData.hasOwnProperty('rsi_signal')) {
-        console.log('rsi_signal: ', newData);
+        addNewSignal(newData);
+
+        setOption(option => {
+          const newOption = JSON.parse(JSON.stringify(option));
+          newOption.series[1].markPoint.data = JSON.parse(JSON.stringify(signal));
+          newOption.series[1].data = JSON.parse(JSON.stringify(signal));
+          return newOption;
+        });
       }
     };
 
