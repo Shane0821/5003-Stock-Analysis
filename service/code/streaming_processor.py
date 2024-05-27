@@ -152,7 +152,7 @@ def write_to_console(df, interval, mode='complete'):
         .trigger(processingTime=interval) \
         .start()
 
-    dfStream.awaitTermination()
+    return dfStream
 
 
 def write_to_mongo(df, database, collection, interval, mode='complete'):
@@ -166,7 +166,8 @@ def write_to_mongo(df, database, collection, interval, mode='complete'):
     .trigger(processingTime=interval) \
     .start()
 
-    dfStream.awaitTermination()
+    return dfStream
+
 
 def write_to_kafka(df, topic, interval, mode='complete'):
     # Write to Kafka
@@ -233,7 +234,7 @@ def write_to_kafka(df, topic, interval, mode='complete'):
         .trigger(processingTime=interval) \
         .start()
     
-    dfStream.awaitTermination()
+    return dfStream
 
 print("start")
 
@@ -244,12 +245,14 @@ ma_len = 300
 stock_data = preprocess(load_data())
 
 # write_to_mongo(stock_data, database, "real-time-stock-data-test", f'{process_interval} seconds', 'append')
-# write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
+real_time_stock_data_processed_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
 # write_to_mongo(data_with_signal, database, 'signal-test-2', f'{process_interval} seconds', 'append')
-# write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'append')
-write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
+signal_stream = write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'append')
+# write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
 
+real_time_stock_data_processed_stream.awaitTermination()
+signal_stream.awaitTermination()
 print("end")
