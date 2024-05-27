@@ -96,10 +96,19 @@ export default function Home() {
   const [regularMarketPrice, setRegularMarketPrice] = useState(null);
   const [regularMarketVolume, setRegularMarketVolume] = useState(null);
 
+  const stockSymbols = ['GOOGL', 'AAPL', 'AMZN', 'MSFT', 'TSLA'];
+  // State to keep track of the selected option
+  const [selectedSymbol, setSelectedSymbol] = useState(stockSymbols[0]);
+  // Handler for when the select box value changes
+  const handleSelectChange = (event) => {
+    console.log(event.target.value)
+    setSelectedSymbol(event.target.value);
+  };
+
   const [option, setOption] = useState({
-    title: {
-      text: 'Dynamic Data & Time Axis (GOOG)'
-    },
+    // title: {
+    //   text: 'Dynamic Data & Time Axis (GOOG)'
+    // },
     tooltip: {
       trigger: 'axis',
       formatter: function (params) {
@@ -158,7 +167,7 @@ export default function Home() {
   })
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8766/");
+    const ws = new WebSocket("ws://0.0.0.0:8766/");
 
     if (ws.OPEN) {
       ws.onmessage = function (event) {
@@ -205,6 +214,20 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between">
       <div className="flex flex-col items-center z-10 w-full justify-between font-mono text-sm">
+        <div className="flex justify-between items-center p-4">
+          <h1 className="text-lg font-semibold text-gray-800 mr-2">Dynamic Data & Time Axis</h1>
+          <select
+            value={selectedSymbol}
+            onChange={handleSelectChange}
+            className="border border-gray-300 rounded-md p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-transparent"
+          >
+            {stockSymbols.map((symbol) => (
+              <option key={symbol} value={symbol}>
+                {symbol}
+              </option>
+            ))}
+          </select>
+        </div>
         <ReactECharts className="w-full" style={{ height: '80vh' }} option={option} />
         <div className="w-5/6 grid grid-cols-4 justify-items-start font-mono">
           <div>Regular Market Price: {regularMarketPrice}</div>
