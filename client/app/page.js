@@ -142,8 +142,17 @@ export default function Home() {
   const [selectedSymbol, setSelectedSymbol] = useState(stockSymbols[0]);
   // Handler for when the select box value changes
   const handleSelectChange = (event) => {
-    console.log(event.target.value)
+    console.log('symbol selected: ', event.target.value)
     setSelectedSymbol(event.target.value);
+  };
+
+  const strategy = ['RSI + MAC', 'OLS'];
+  // State to keep track of the selected option
+  const [selectedStrategy, setSelectedStrategy] = useState(strategy[0]);
+  // Handler for when the select box value changes
+  const handleSelectStrategyChange = (event) => {
+    console.log('strategy selected: ', event.target.value)
+    setSelectedStrategy(event.target.value);
   };
 
   const [option, setOption] = useState({
@@ -292,12 +301,27 @@ export default function Home() {
       <div className="flex flex-col items-center z-10 w-full justify-between font-mono text-sm">
         <div className="flex justify-between items-center p-4">
           <h1 className="text-lg font-semibold text-gray-800 mr-2">Dynamic Data & Time Axis</h1>
+
+          <h1 className="ml-8 text-lg font-semibold text-gray-800 mr-2">Stock</h1>
           <select
             value={selectedSymbol}
             onChange={handleSelectChange}
             className="border border-gray-300 rounded-md p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-transparent"
           >
             {stockSymbols.map((symbol) => (
+              <option key={symbol} value={symbol}>
+                {symbol}
+              </option>
+            ))}
+          </select>
+
+          <h1 className="ml-8 text-lg font-semibold text-gray-800 mr-2">Strategy</h1>
+          <select
+            value={selectedStrategy}
+            onChange={handleSelectStrategyChange}
+            className="border border-gray-300 rounded-md p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-transparent"
+          >
+            {strategy.map((symbol) => (
               <option key={symbol} value={symbol}>
                 {symbol}
               </option>
