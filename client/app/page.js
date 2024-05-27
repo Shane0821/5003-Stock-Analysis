@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 let now = new Date();
@@ -51,8 +51,8 @@ function randomData() {
   };
 }
 
-function addNewData(_data) {
-  console.log(_data)
+function addNewStockData(_data) {
+  console.log('stock data: ', _data)
 
   now = new Date(_data.timestamp);
   value = _data.regular_market_price;
@@ -169,17 +169,22 @@ export default function Home() {
   useEffect(() => {
     const ws = new WebSocket("ws://0.0.0.0:8766/");
 
-    if (ws.OPEN) {
-      ws.onmessage = function (event) {
-        const newData = JSON.parse(event.data)
-        addNewData(newData)
+    ws.onopen = () => {
+      console.log('WebSocket connection established.');
+    };
+
+    ws.onmessage = function (event) {
+      const newData = JSON.parse(event.data);
+
+      if (newData.hasOwnProperty('regular_market_price')) {
+        addNewStockData(newData);
 
         setOption(option => {
           const newOption = JSON.parse(JSON.stringify(option));
-          newOption.series[0].markPoint.data = JSON.parse(JSON.stringify(data))
-          newOption.series[0].data = JSON.parse(JSON.stringify(data))
-          newOption.xAxis.min = data.length == 0 ? new Date().getTime() : data[0].value[0]
-          newOption.xAxis.max = newOption.xAxis.min + seconds
+          newOption.series[0].markPoint.data = JSON.parse(JSON.stringify(data));
+          newOption.series[0].data = JSON.parse(JSON.stringify(data));
+          newOption.xAxis.min = data.length === 0 ? new Date().getTime() : data[0].value[0];
+          newOption.xAxis.max = newOption.xAxis.min + seconds;
           return newOption;
         });
 
@@ -201,15 +206,24 @@ export default function Home() {
         setRegularMarketPreviousClose(newData.regular_market_previous_close);
         setRegularMarketPrice(newData.regular_market_price);
         setRegularMarketVolume(newData.regular_market_volume);
+      } else if (newData.hasOwnProperty('rsi_signal')) {
+        console.log('rsi_signal: ', newData);
       }
-    }
+    };
+
+    ws.onerror = (error) => {
+      console.error(`WebSocket error: ${error}`);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed.');
+    };
 
     return () => {
-      if (ws.OPEN && ws.CONNECTING) {
-        ws.close();
-      }
-    }
-  }, [])
+      console.log('Cleaning up WebSocket connection.');
+      ws.close();
+    };
+  }, []);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between">
