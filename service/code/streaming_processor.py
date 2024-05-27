@@ -313,9 +313,13 @@ def OLS(df, batch_id):
     df = assembler.transform(df)
     df = model.transform(df)
 
-    df = df.withColumn('ols_signal', when(col('prediction') / col('regular_market_price') > 1.03, 1).when(col('prediction') / col('regular_market_price') < 0.97, -1).otherwise(0))
+    df = df.withColumn('ratio', col('prediction') / col('regular_market_price'))
 
-    df = df.select('ticker_symbol', current_timestamp().alias('timestamp'), 'regular_market_price', 'prediction', 'ols_signal')
+    df = df.withColumn('ols_signal', when(col('ratio') > 1.03, 1).when(col('ratio') < 0.97, -1).otherwise(0))
+
+    df = df.select('ticker_symbol', current_timestamp().alias('timestamp'), 'regular_market_price', 'prediction', 'ratio', 'ols_signal')
+
+    df.show()
 
     df.write.format("mongo").mode("append")\
     .option("spark.mongodb.connection.uri", "mongodb+srv://msbd:bdt5003!@5003-cluster-2.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000") \
