@@ -319,29 +319,59 @@ def OLS(df, batch_id):
 
     df = df.select('ticker_symbol', current_timestamp().alias('timestamp'), 'regular_market_price', 'prediction', 'ratio', 'ols_signal')
 
-    df.show()
 
-    df.write.format("mongo").mode("append")\
+    df.persist()
+
+    # write to kafka
+
+    # Define the schema for the key and value
+    key_schema = StructType([
+        StructField("ticker_symbol", StringType()),
+        # Add more fields here based on your key structure
+    ])
+
+    value_schema = StructType([
+        StructField("timestamp", TimestampType()),
+        StructField("regular_market_price", FloatType()),
+        StructField("prediction", FloatType()),
+        StructField("ratio", FloatType()),
+        StructField("ols_signal", IntegerType())
+        # Add more fields here based on your value structure
+    ])
+
+    kakfa = df.select(
+        F.to_json(F.struct([F.col(field.name) for field in value_schema])).alias("value"),
+        F.to_json(F.struct([F.col(field.name) for field in key_schema])).alias("key")
+    )
+
+    kakfa.write.format("kafka").mode("append") \
+    .option("kafka.bootstrap.servers", "kafka:9092") \
+    .option("topic", "signal-ols") \
+    .save()
+
+    # write to mongodb
+    df.write.format("mongodb").mode("append")\
     .option("spark.mongodb.connection.uri", "mongodb+srv://msbd:bdt5003!@5003-cluster-2.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000") \
     .option("spark.mongodb.database", database) \
     .option("spark.mongodb.collection", "signal-ols") \
-    .trigger(processingTime=process_interval) \
-    .start()
+    .save()
+
+    df.unpersist()
 
 
 print("start")
 
 stock_data = preprocess(load_data())
 
-training_stream = stock_data.writeStream \
-    .foreachBatch(train_model) \
-    .trigger(processingTime=f'{training_interval} seconds') \
-    .start()
+# training_stream = stock_data.writeStream \
+#     .foreachBatch(train_model) \
+#     .trigger(processingTime=f'{training_interval} seconds') \
+#     .start()
 
-prediction_stream = stock_data.writeStream \
-    .foreachBatch(OLS) \
-    .trigger(processingTime=f'{process_interval} seconds') \
-    .start()
+# prediction_stream = stock_data.writeStream \
+#     .foreachBatch(OLS) \
+#     .trigger(processingTime=f'{process_interval} seconds') \
+#     .start()
 
 # write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
 # real_time_stock_data_processed_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
@@ -354,6 +384,6 @@ data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
 # real_time_stock_data_processed_stream.awaitTermination()
 # signal_stream.awaitTermination()
-training_stream.awaitTermination()
-prediction_stream.awaitTermination()
+# training_stream.awaitTermination()
+# prediction_stream.awaitTermination()
 print("end")
