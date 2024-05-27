@@ -32,10 +32,19 @@ Start kafka and spark with the following docker-compose.yml file:
 ```
 version: '3'
 
+networks:
+  app-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/24
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
-    hostname: zookeeper
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.2
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -44,15 +53,17 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
-    hostname: kafka
     depends_on:
       - zookeeper
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.3
     ports:
       - '9092:9092'
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.16.0.3:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -63,19 +74,24 @@ services:
       retries: 5
 
   spark-master:
-    image: bitnami/spark:3.4.1
-    hostname: spark-master
+    image: bitnami/spark:3.4.3
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.4
     container_name: spark-master
     ports:
       - "8080:8080"
       - "7077:7077"
     environment:
       - "SPARK_MODE=master"
-    volume:
+    volumes:
       - ./code:/tmp/code
 
   spark-worker-1:
-    image: bitnami/spark:3.4.1
+    image: bitnami/spark:3.4.3
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.5
     container_name: spark-worker-1
     depends_on:
       - spark-master
@@ -85,7 +101,10 @@ services:
       - "SPARK_MODE=worker"
 
   spark-worker-2:
-    image: bitnami/spark:3.4.1
+    image: bitnami/spark:3.4.3
+    networks:
+      app-network:
+        ipv4_address: 172.16.0.6
     container_name: spark-worker-2
     depends_on:
       - spark-master
