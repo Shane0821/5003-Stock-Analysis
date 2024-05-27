@@ -2,6 +2,10 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 import pyspark.sql.functions as F
 from pyspark.sql.types import *
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.feature import VectorAssembler
+from pyspark.sql.window import Window
+from shutil import rmtree
 
 ## Create a spark session
 spark = SparkSession \
@@ -236,23 +240,116 @@ def write_to_kafka(df, topic, interval, mode='complete'):
     
     return dfStream
 
-print("start")
 
+model = None
 database = "stock"
-process_interval = 5
+process_interval = 10
 ma_len = 300
+training_interval = 120
+
+def train_model(batch_df, batch_id):
+    global model
+    # Check if DataFrame is empty
+    windowSpec = Window.partitionBy('ticker_symbol').orderBy('timestamp')
+    batch_df = batch_df.withColumn("label", lag("regular_market_price", 10).over(windowSpec))
+
+    # Filter out rows with null labels
+    batch_df = batch_df.filter(batch_df.label.isNotNull())
+
+    batch_df.persist()
+
+    # Check if DataFrame is empty
+    if (len(batch_df.take(1)) == 0):
+        batch_df.unpersist()
+        return
+
+    print("training...")
+
+    columns = ['regular_market_price', 'regular_market_change', 'regular_market_change_percent', 'regular_market_previous_close', 'regular_market_open', 'bid_price', 'bid_size', 'ask_price', 'ask_size', 'market_cap', 'market_cap_type', 'beta', 'pe_ratio', 'eps', '1y_target_est']
+    assembler = VectorAssembler(inputCols=columns, outputCol='features')
+
+    batch_df = assembler.transform(batch_df)
+    batch_df = batch_df.select('features', 'label')
+
+    lr = LinearRegression(maxIter=100, regParam=0.1, elasticNetParam=0.8, featuresCol='features', labelCol='label')
+
+    model = lr.fit(batch_df)
+
+    batch_df.unpersist()
+    
+    print("finish training")
+
+    print(model.coefficients)
+    print(model.intercept)
+
+
+def OLS(df, batch_id):
+    global model
+
+    if (model is None):
+        return
+    
+    df = df.groupBy('ticker_symbol').agg(
+        last('regular_market_price').alias('regular_market_price'),
+        last('regular_market_change').alias('regular_market_change'),
+        last('regular_market_change_percent').alias('regular_market_change_percent'),
+        avg('regular_market_previous_close').alias('regular_market_previous_close'),
+        avg('regular_market_open').alias('regular_market_open'),
+        avg('bid_price').alias('bid_price'),
+        avg('bid_size').alias('bid_size'),
+        avg('ask_price').alias('ask_price'),
+        avg('ask_size').alias('ask_size'),
+        avg('market_cap').alias('market_cap'),
+        avg('market_cap_type').alias('market_cap_type'),
+        avg('beta').alias('beta'),
+        avg('pe_ratio').alias('pe_ratio'),
+        avg('eps').alias('eps'),
+        avg('1y_target_est').alias('1y_target_est')
+    )
+
+    columns = ['regular_market_price', 'regular_market_change', 'regular_market_change_percent', 'regular_market_previous_close', 'regular_market_open', 'bid_price', 'bid_size', 'ask_price', 'ask_size', 'market_cap', 'market_cap_type', 'beta', 'pe_ratio', 'eps', '1y_target_est']
+    assembler = VectorAssembler(inputCols=columns, outputCol='features')
+    
+    df = assembler.transform(df)
+    df = model.transform(df)
+
+    df = df.withColumn('ols_signal', when(col('prediction') / col('regular_market_price') > 1.03, 1).when(col('prediction') / col('regular_market_price') < 0.97, -1).otherwise(0))
+
+    df = df.select('ticker_symbol', current_timestamp().alias('timestamp'), 'regular_market_price', 'prediction', 'ols_signal')
+
+    df.write.format("mongo").mode("append")\
+    .option("spark.mongodb.connection.uri", "mongodb+srv://msbd:bdt5003!@5003-cluster-2.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000") \
+    .option("spark.mongodb.database", database) \
+    .option("spark.mongodb.collection", "signal-ols") \
+    .trigger(processingTime=process_interval) \
+    .start()
+
+
+print("start")
 
 stock_data = preprocess(load_data())
 
-# write_to_mongo(stock_data, database, "real-time-stock-data-test", f'{process_interval} seconds', 'append')
-real_time_stock_data_processed_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
+training_stream = stock_data.writeStream \
+    .foreachBatch(train_model) \
+    .trigger(processingTime=f'{training_interval} seconds') \
+    .start()
+
+prediction_stream = stock_data.writeStream \
+    .foreachBatch(OLS) \
+    .trigger(processingTime=f'{process_interval} seconds') \
+    .start()
+
+# write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
+# real_time_stock_data_processed_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-# write_to_mongo(data_with_signal, database, 'signal-test-2', f'{process_interval} seconds', 'append')
-signal_stream = write_to_kafka(data_with_signal, "signal", f'{process_interval} seconds', 'append')
+# write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{process_interval} seconds', 'append')
+# signal_stream = write_to_kafka(data_with_signal, "signal-rsi-mac", f'{process_interval} seconds', 'append')
 # write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
 
-real_time_stock_data_processed_stream.awaitTermination()
-signal_stream.awaitTermination()
+# real_time_stock_data_processed_stream.awaitTermination()
+# signal_stream.awaitTermination()
+training_stream.awaitTermination()
+prediction_stream.awaitTermination()
 print("end")
