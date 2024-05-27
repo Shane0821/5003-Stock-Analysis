@@ -109,8 +109,8 @@ sudo docker exec -it spark-master /bin/bash -c "pip install py4j && python3 /tmp
 
 To start websocket, run:
 ```
-python3 ./code/kafka_ws_producer.py
-python3 ./code/kafka_websocket.py
+<!-- python3 ./service/code/kafka_ws_producer.py -->
+python3 ./service/code/kafka_websocket.py
 ```
 
 ### Local Deployment
