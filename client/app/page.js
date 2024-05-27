@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 let now = new Date();
@@ -16,8 +16,8 @@ let signal = [];
 // }
 
 function getSymbolSize(v1, v2) {
-  if (v1 == 1 && v2 == 1) return 8;
-  else if (v1 == -1 && v2 == -1) return 11;
+  if (v1 == 1 && v2 == 1) return 9;
+  else if (v1 == -1 && v2 == -1) return 12;
   return 10;
 }
 
@@ -64,7 +64,8 @@ function addNewStockData(_data) {
       // [now.getHours(), now.getMinutes(), now.getSeconds()].join('/'),
       now.getTime(),
       value,
-      [now.getFullYear(), now.getMonth(), now.getDate() + 1].join('/'),
+      " ",
+      // [now.getFullYear(), now.getMonth(), now.getDate() + 1].join('/'),
     ],
     symbol: 'none',
     symbolSize: 10
@@ -75,11 +76,27 @@ function addNewStockData(_data) {
   data.push(newData)
 }
 
+function getSignalValue(signal) {
+  const x = new Date(signal.timestamp).getTime()
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i].value[0] >= x && x >= data[i - 1].value[0]) {
+      const x1 = data[i - 1].value[0]
+      const x2 = data[i].value[0]
+      const y1 = data[i - 1].value[1]
+      const y2 = data[i].value[1]
+      return y1 + (y2 - y1) * (x - x1) / (x2 - x1)
+    }
+  }
+
+  return signal.moving_avg_price
+}
+
 function addNewSignal(_data) {
   console.log('signal: ', _data)
 
   now = new Date(_data.timestamp);
-  value = _data.moving_avg_price;
+  value = getSignalValue(_data)
 
   const newData = {
     name: now.toString(),
@@ -87,7 +104,7 @@ function addNewSignal(_data) {
       // [now.getHours(), now.getMinutes(), now.getSeconds()].join('/'),
       now.getTime(),
       value,
-      [now.getFullYear(), now.getMonth(), now.getDate() + 1].join('/'),
+      ` moving_avg_price: ${_data.moving_avg_price}`,
     ],
     symbol: getSymbol(_data.rsi_signal, _data.mean_reversion_signal),
     itemStyle: getItemStyle(_data.rsi_signal, _data.mean_reversion_signal),
@@ -133,6 +150,7 @@ export default function Home() {
     // title: {
     //   text: 'Dynamic Data & Time Axis (GOOG)'
     // },
+    lazyUpdate: false, // Update immediately
     tooltip: {
       trigger: 'axis',
       formatter: function (params) {
@@ -152,7 +170,8 @@ export default function Home() {
           ':' +
           date.getSeconds() +
           ' : ' +
-          params.value[1]
+          params.value[1] +
+          params.value[2]
         );
       },
       axisPointer: {
@@ -181,21 +200,23 @@ export default function Home() {
         name: 'Data',
         type: 'line',
         showSymbol: true,
-        symbolSize: 9,
+        z: 10,
         markPoint: {
           data: data
         },
-        data: data
+        data: data,
+        animation: false, // Disable animation for the series
       },
       {
         name: 'Signal',
         type: 'scatter',
         showSymbol: true,
-        symbolSize: 9,
+        z: 20,
         markPoint: {
           data: data
         },
-        data: data
+        data: data,
+        animation: false, // Disable animation for the series
       }
     ]
   })
@@ -283,7 +304,15 @@ export default function Home() {
             ))}
           </select>
         </div>
-        <ReactECharts className="w-full" style={{ height: '80vh' }} option={option} />
+        <ReactECharts
+          className="w-full"
+          style={{ height: '80vh' }}
+          option={option}
+          opts={{
+            notMerge: true,  // Prevent merging with the old option
+            lazyUpdate: false, // Update immediately
+          }}
+        />
         <div className="w-5/6 grid grid-cols-4 justify-items-start font-mono">
           <div>Regular Market Price: {regularMarketPrice}</div>
           <div>Regular Market Change: {regularMarketChange}</div>
