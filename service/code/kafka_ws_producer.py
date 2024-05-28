@@ -1,3 +1,5 @@
+# for testing only
+
 from kafka import KafkaProducer
 import time
 import json
