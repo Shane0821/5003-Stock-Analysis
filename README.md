@@ -167,3 +167,70 @@ sudo chmod +x ./stop_service.sh
 ```
 
 **Note**: remember to rebuild images after chaning the code.
+
+### Deploy on K8s
+#### Deploy Zookeeper
+```
+kubectl apply -f deployment/zookeeper.yaml
+```
+You can check if the deployment is successful by running:
+```
+kubectl get services -o wide
+kubectl get pod -o wide
+```
+
+#### Deploy Kafka
+```
+kubectl apply -f deployment/kafka.yaml
+kubectl get pod -o wide
+```
+Wait until kafka pod is ready (READY 0/1 -> READY 1/1).
+
+#### Register Topics
+```
+kubectl apply -f deployment/register-topic.yaml
+```
+Pod register-topic-...'s status should change from running to completed in a few seconds.
+Execute this to check if the topics are successfully registered. If yes, you should see all the registered topics.
+
+```
+kubectl exec <kafka-pod-name>  -- /bin/bash -c "kafka-topics --bootstrap-server localhost:9092 --list"
+```
+Finally, delete the topic register job using:
+```
+kubectl delete -f deployment/register-topic.yaml
+```
+
+To test kafka service locally, you should expose an external ip. You can skip this if you are using cloud services.
+```
+minikube tunnel
+```
+Then test with kafkacat. 
+```
+echo "hello world!" | kafkacat -P -b localhost:9092 -t test
+kafkacat -C -b localhost:9092 -t test
+```
+The command should execute without errors, indicating that producers are communicating fine with kafka in k8s.
+
+**Note**: If you are using cloud services, replace localhost with external ipv4 address. Remember to convert hostname to ipv4 address. Don't forget to add "external-ip  kafka" to /etc/hosts on the client host. 
+
+#### Deploy Producer
+```
+kubectl apply -f deployment/producer.yaml
+```
+
+#### Deploy Spark Cluster for Processing Streaming Data
+Before starting this service, you should set ```spark.executor.instances, spark.kubernetes.cores, spark.kubernetes.memory``` based on you demand in ```deployment/spark.yaml```.
+
+```
+kubectl apply -f deployment/spark.yaml
+```
+
+Keep track of the output of spark driver using ```kubectl logs -f <pod-name>```.
+
+**Note**: when terminating the spark service, you have to delete spark driver manually using ```kubectl delete pods <pod-name>```.
+
+#### Deploy Websocket
+```
+kubectl apply -f deployment/websocket.yaml
+```
