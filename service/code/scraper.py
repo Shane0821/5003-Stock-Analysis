@@ -59,19 +59,19 @@ class Scraper:
             regular_market_change_percent = self.driver.find_element(
                 By.CSS_SELECTOR, f'[data-symbol="{self.ticker_symbol}"][data-testid="qsp-price-change-percent"]').text
             
-            # Convert regular market price to float
-            regular_market_price_float = float(regular_market_price)
-            regular_market_change_float = float(regular_market_change)
+            # # Convert regular market price to float
+            # regular_market_price_float = float(regular_market_price)
+            # regular_market_change_float = float(regular_market_change)
 
-            diff = random.uniform(-10.00, 10.00)
+            # diff = random.uniform(-10.00, 10.00)
             
-            regular_market_change_float += diff
-            regular_market_change_percent = f"({round((regular_market_change_float / regular_market_price_float) * 100, 2)}%)"
-            regular_market_price_float += diff
+            # regular_market_change_float += diff
+            # regular_market_change_percent = f"({round((regular_market_change_float / regular_market_price_float) * 100, 2)}%)"
+            # regular_market_price_float += diff
 
-            # Convert back to string
-            regular_market_price = str(regular_market_price_float)
-            regular_market_change = str(regular_market_change_float)
+            # # Convert back to string
+            # regular_market_price = str(regular_market_price_float)
+            # regular_market_change = str(regular_market_change_float)
 
             data = {}
             data['regular_market_price'] = regular_market_price
