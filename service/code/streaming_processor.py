@@ -110,7 +110,7 @@ def preprocess(df):
     return df
 
 
-def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.03, rsi_threshold=70):
+def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.002, rsi_threshold=70):
     stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
 
     stock_data = stock_data.withWatermark('timestamp', f'1 second').groupBy(
@@ -319,7 +319,7 @@ def OLS(df, batch_id):
 
     df = df.withColumn('ratio', col('prediction') / col('regular_market_price'))
 
-    df = df.withColumn('ols_signal', when(col('ratio') > 1.03, 1).when(col('ratio') < 0.97, -1).otherwise(0))
+    df = df.withColumn('ols_signal', when(col('ratio') > 1.002, 1).when(col('ratio') < 0.998, -1).otherwise(0))
 
     df = df.select('ticker_symbol', current_timestamp().alias('timestamp'), 'regular_market_price', 'prediction', 'ratio', 'ols_signal')
 
