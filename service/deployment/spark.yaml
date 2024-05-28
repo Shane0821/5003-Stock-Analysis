@@ -77,6 +77,7 @@ spec:
               --conf spark.kubernetes.driver.memory=4GB \
               --conf spark.kubernetes.executor.memory=4GB \
               --conf spark.jars.ivy=/tmp/.ivy \
+              --conf spark.kubernetes.container.image.pullPolicy=Always \
               --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,org.mongodb.spark:mongo-spark-connector_2.12:10.2.1 \
               local:///opt/spark/code/streaming_processor.py
 status: {}
