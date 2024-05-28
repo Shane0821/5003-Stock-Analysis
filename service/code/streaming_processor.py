@@ -110,7 +110,7 @@ def preprocess(df):
     return df
 
 
-def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi_threshold=70):
+def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.03, rsi_threshold=70):
     stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
 
     stock_data = stock_data.withWatermark('timestamp', f'1 second').groupBy(
@@ -123,7 +123,6 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi
             max('regular_market_price').alias('max_price'),
             min('regular_market_price').alias('min_price'),
             last('timestamp').alias('timestamp'),
-            col('window').getField('start').alias('start'),
             col('window').getField('end').alias('end'),
         )
 
@@ -131,21 +130,23 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.01, rsi
 
     # mean reversion signal
     stock_data = stock_data.withColumn(
-            'mean_reversion_signal',
-            when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, 1)
-            .when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') < -ma_threshold_perc, -1)
+            'mac',
+            when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, -1)
+            .when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') < -ma_threshold_perc, 1)
             .otherwise(0)
         )
+
+    stock_data = stock_data.withColumn('rsi', 100 - (100 / (1 + ((col('regular_market_price') - col('min_price')) / (col('max_price') - col('regular_market_price'))))))
 
     # RSI signal
     stock_data = stock_data.withColumn(
         'rsi_signal',
-        when(100 - (100 / (1 + ((col('max_price') - col('regular_market_price')) / (col('regular_market_price') - col('min_price'))))) > rsi_threshold, -1)
-        .when(100 - (100 / (1 + ((col('max_price') - col('regular_market_price')) / (col('regular_market_price') - col('min_price'))))) < 100 - rsi_threshold, 1)
+        when(col('rsi') > rsi_threshold, -1)
+        .when(col('rsi') < 100 - rsi_threshold, 1)
         .otherwise(0)
     )
 
-    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'moving_avg_price', 'mean_reversion_signal', 'rsi_signal')
+    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'regular_market_price', 'moving_avg_price', 'rsi', 'mac', 'rsi_signal')
 
 
 def write_to_console(df, interval, mode='complete'):
@@ -154,6 +155,7 @@ def write_to_console(df, interval, mode='complete'):
         .outputMode(mode) \
         .format("console") \
         .trigger(processingTime=interval) \
+        .option("truncate", "false") \
         .start()
 
     return dfStream
@@ -219,7 +221,7 @@ def write_to_kafka(df, topic, interval, mode='complete'):
         value_schema = StructType([
             StructField("timestamp", TimestampType()),
             StructField("moving_avg_price", FloatType()),
-            StructField("mean_reversion_signal", IntegerType()),
+            StructField("mac", IntegerType()),
             StructField("rsi_signal", IntegerType())
             # Add more fields here based on your value structure
         ])
@@ -245,7 +247,7 @@ model = None
 database = "stock"
 process_interval = 10
 ma_len = 300
-training_interval = 120
+training_interval = 180
 
 def train_model(batch_df, batch_id):
     global model
@@ -373,17 +375,26 @@ stock_data = preprocess(load_data())
 #     .trigger(processingTime=f'{process_interval} seconds') \
 #     .start()
 
-# write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
-# real_time_stock_data_processed_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
+# real_time_stock_data_processed_mongo_stream = write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
+real_time_stock_data_processed_kafka_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-# write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{process_interval} seconds', 'append')
-# signal_stream = write_to_kafka(data_with_signal, "signal-rsi-mac", f'{process_interval} seconds', 'append')
-# write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
+# signal_mongo_stream = write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{process_interval} seconds', 'append')
+signal_kafka_stream = write_to_kafka(data_with_signal, "signal-rsi-mac", f'{process_interval} seconds', 'append')
+# signal_console_stream = write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
 
-# real_time_stock_data_processed_stream.awaitTermination()
-# signal_stream.awaitTermination()
+
+############################################
+
 # training_stream.awaitTermination()
 # prediction_stream.awaitTermination()
+
+# real_time_stock_data_processed_mongo_stream.awaitTermination()
+real_time_stock_data_processed_kafka_stream.awaitTermination()
+
+# signal_mongo_stream.awaitTermination()
+signal_kafka_stream.awaitTermination()
+# signal_console_stream.awaitTermination()
+
 print("end")
