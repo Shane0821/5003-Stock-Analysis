@@ -130,7 +130,7 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.03, rsi
 
     # mean reversion signal
     stock_data = stock_data.withColumn(
-            'mac',
+            'mac_signal',
             when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, -1)
             .when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') < -ma_threshold_perc, 1)
             .otherwise(0)
@@ -146,7 +146,7 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.03, rsi
         .otherwise(0)
     )
 
-    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'regular_market_price', 'moving_avg_price', 'rsi', 'mac', 'rsi_signal')
+    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'regular_market_price', 'moving_avg_price', 'rsi', 'mac_signal', 'rsi_signal')
 
 
 def write_to_console(df, interval, mode='complete'):
@@ -211,7 +211,7 @@ def write_to_kafka(df, topic, interval, mode='complete'):
             F.to_json(F.struct([F.col(field.name) for field in key_schema])).alias("key")
         )
     
-    elif (topic == 'signal'):
+    elif (topic == 'signal-rsi-mac'):
         # Define the schema for the key and value
         key_schema = StructType([
             StructField("ticker_symbol", StringType()),
@@ -221,7 +221,8 @@ def write_to_kafka(df, topic, interval, mode='complete'):
         value_schema = StructType([
             StructField("timestamp", TimestampType()),
             StructField("moving_avg_price", FloatType()),
-            StructField("mac", IntegerType()),
+            StructField("rsi", FloatType()),
+            StructField("mac_signal", IntegerType()),
             StructField("rsi_signal", IntegerType())
             # Add more fields here based on your value structure
         ])
@@ -365,35 +366,35 @@ print("start")
 
 stock_data = preprocess(load_data())
 
-# training_stream = stock_data.writeStream \
-#     .foreachBatch(train_model) \
-#     .trigger(processingTime=f'{training_interval} seconds') \
-#     .start()
+training_stream = stock_data.writeStream \
+    .foreachBatch(train_model) \
+    .trigger(processingTime=f'{training_interval} seconds') \
+    .start()
 
-# prediction_stream = stock_data.writeStream \
-#     .foreachBatch(OLS) \
-#     .trigger(processingTime=f'{process_interval} seconds') \
-#     .start()
+prediction_stream = stock_data.writeStream \
+    .foreachBatch(OLS) \
+    .trigger(processingTime=f'{process_interval} seconds') \
+    .start()
 
-# real_time_stock_data_processed_mongo_stream = write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
+real_time_stock_data_processed_mongo_stream = write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
 real_time_stock_data_processed_kafka_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
 data_with_signal = gen_signal(stock_data, ma_len, process_interval)
 
-# signal_mongo_stream = write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{process_interval} seconds', 'append')
+signal_mongo_stream = write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{process_interval} seconds', 'append')
 signal_kafka_stream = write_to_kafka(data_with_signal, "signal-rsi-mac", f'{process_interval} seconds', 'append')
 # signal_console_stream = write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
 
 
 ############################################
 
-# training_stream.awaitTermination()
-# prediction_stream.awaitTermination()
+training_stream.awaitTermination()
+prediction_stream.awaitTermination()
 
-# real_time_stock_data_processed_mongo_stream.awaitTermination()
+real_time_stock_data_processed_mongo_stream.awaitTermination()
 real_time_stock_data_processed_kafka_stream.awaitTermination()
 
-# signal_mongo_stream.awaitTermination()
+signal_mongo_stream.awaitTermination()
 signal_kafka_stream.awaitTermination()
 # signal_console_stream.awaitTermination()
 
