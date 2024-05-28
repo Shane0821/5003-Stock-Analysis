@@ -1,7 +1,6 @@
 FROM spark:3.4.1
 USER root
-RUN pip install numpy --user spark
-USER spark
+RUN pip install numpy
 COPY ../code/streaming_processor.py /opt/spark/code/
 # TODO: use mvn to install dependencies
 # RUN wget https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.4.1/spark-sql-kafka-0-10_2.12-3.4.1.jar && \
