@@ -106,9 +106,9 @@ function addNewSignal(_data) {
       value,
       ` moving_avg_price: ${_data.moving_avg_price}`,
     ],
-    symbol: getSymbol(_data.rsi_signal, _data.mean_reversion_signal),
-    itemStyle: getItemStyle(_data.rsi_signal, _data.mean_reversion_signal),
-    symbolSize: getSymbolSize(_data.rsi_signal, _data.mean_reversion_signal)
+    symbol: getSymbol(_data.rsi_signal, _data.mac_signal),
+    itemStyle: getItemStyle(_data.rsi_signal, _data.mac_signal),
+    symbolSize: getSymbolSize(_data.rsi_signal, _data.mac_signal)
   };
 
   if (signal.length >= size) signal.shift();
