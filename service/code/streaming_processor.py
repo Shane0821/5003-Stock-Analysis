@@ -110,7 +110,7 @@ def preprocess(df):
     return df
 
 
-def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.002, rsi_threshold=70):
+def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.001, rsi_threshold=70):
     stock_data = stock_data.withColumn('timestamp', date_trunc('second', col('timestamp')))
 
     stock_data = stock_data.withWatermark('timestamp', f'1 second').groupBy(
@@ -131,22 +131,22 @@ def gen_signal(stock_data, ma_len, process_interval, ma_threshold_perc=0.002, rs
     # mean reversion signal
     stock_data = stock_data.withColumn(
             'mac_signal',
-            when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, -1)
-            .when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') < -ma_threshold_perc, 1)
+            when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') > ma_threshold_perc, 1)
+            .when((col('regular_market_price') - col('moving_avg_price')) / col('moving_avg_price') < -ma_threshold_perc, -1)
             .otherwise(0)
         )
 
-    stock_data = stock_data.withColumn('rsi', 100 - (100 / (1 + ((col('regular_market_price') - col('min_price')) / (col('max_price') - col('regular_market_price'))))))
+    # stock_data = stock_data.withColumn('rsi', 100 - (100 / (1 + ((col('regular_market_price') - col('min_price')) / (col('max_price') - col('regular_market_price'))))))
 
-    # RSI signal
-    stock_data = stock_data.withColumn(
-        'rsi_signal',
-        when(col('rsi') > rsi_threshold, -1)
-        .when(col('rsi') < 100 - rsi_threshold, 1)
-        .otherwise(0)
-    )
+    # # RSI signal
+    # stock_data = stock_data.withColumn(
+    #     'rsi_signal',
+    #     when(col('rsi') > rsi_threshold, -1)
+    #     .when(col('rsi') < 100 - rsi_threshold, 1)
+    #     .otherwise(0)
+    # )
 
-    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'regular_market_price', 'moving_avg_price', 'rsi', 'mac_signal', 'rsi_signal')
+    return stock_data.select('ticker_symbol', col('end').alias('timestamp'), 'regular_market_price', 'moving_avg_price', 'mac_signal')
 
 
 def write_to_console(df, interval, mode='complete'):
@@ -221,9 +221,9 @@ def write_to_kafka(df, topic, interval, mode='complete'):
         value_schema = StructType([
             StructField("timestamp", TimestampType()),
             StructField("moving_avg_price", FloatType()),
-            StructField("rsi", FloatType()),
+            # StructField("rsi", FloatType()),
             StructField("mac_signal", IntegerType()),
-            StructField("rsi_signal", IntegerType())
+            # StructField("rsi_signal", IntegerType())
             # Add more fields here based on your value structure
         ])
 
@@ -319,7 +319,7 @@ def OLS(df, batch_id):
 
     df = df.withColumn('ratio', col('prediction') / col('regular_market_price'))
 
-    df = df.withColumn('ols_signal', when(col('ratio') > 1.002, 1).when(col('ratio') < 0.998, -1).otherwise(0))
+    df = df.withColumn('ols_signal', when(col('ratio') > 1.001, 1).when(col('ratio') < 0.999, -1).otherwise(0))
 
     df = df.select('ticker_symbol', current_timestamp().alias('timestamp'), 'regular_market_price', 'prediction', 'ratio', 'ols_signal')
 
