@@ -8,7 +8,6 @@ sudo docker build --network host -f ./dockerfile/processor_dockerfile -t streami
 
 sudo docker build --network host -f ./dockerfile/websocket_dockerfile -t kafka-websocket .
 
-# TODO: use s3 and remove this
 sudo docker build --network host -f ./dockerfile/k8s_spark_dockerfile -t k8s-spark .
 
 # sudo docker tag topic-register:latest shane233/topic-register:latest
