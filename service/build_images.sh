@@ -6,6 +6,8 @@ sudo docker build --network host -f ./dockerfile/producer_dockerfile -t data-pro
 
 sudo docker build --network host -f ./dockerfile/processor_dockerfile -t streaming-processor .
 
+sudo docker build --network host -f ./dockerfile/websocket_dockerfile -t kafka-websocket .
+
 # TODO: use s3 and remove this
 sudo docker build --network host -f ./dockerfile/k8s_spark_dockerfile -t k8s-spark .
 
