@@ -246,7 +246,8 @@ def write_to_kafka(df, topic, interval, mode='complete'):
 
 model = None
 database = "stock"
-process_interval = 10
+process_interval = 3
+signal_gen_interval = 10
 ma_len = 300
 training_interval = 180
 
@@ -373,17 +374,17 @@ training_stream = stock_data.writeStream \
 
 prediction_stream = stock_data.writeStream \
     .foreachBatch(OLS) \
-    .trigger(processingTime=f'{process_interval} seconds') \
+    .trigger(processingTime=f'{signal_gen_interval} seconds') \
     .start()
 
 real_time_stock_data_processed_mongo_stream = write_to_mongo(stock_data, database, "real-time-stock-data", f'{process_interval} seconds', 'append')
 real_time_stock_data_processed_kafka_stream = write_to_kafka(stock_data, "real-time-stock-data-processed", f'{process_interval} seconds', 'append')
 
-data_with_signal = gen_signal(stock_data, ma_len, process_interval)
+data_with_signal = gen_signal(stock_data, ma_len, signal_gen_interval)
 
-signal_mongo_stream = write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{process_interval} seconds', 'append')
-signal_kafka_stream = write_to_kafka(data_with_signal, "signal-rsi-mac", f'{process_interval} seconds', 'append')
-# signal_console_stream = write_to_console(data_with_signal, f'{process_interval} seconds', 'append')
+signal_mongo_stream = write_to_mongo(data_with_signal, database, 'signal-rsi-mac', f'{signal_gen_interval} seconds', 'append')
+signal_kafka_stream = write_to_kafka(data_with_signal, "signal-rsi-mac", f'{signal_gen_interval} seconds', 'append')
+# signal_console_stream = write_to_console(data_with_signal, f'{signal_gen_interval} seconds', 'append')
 
 
 ############################################
