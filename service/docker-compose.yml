@@ -60,6 +60,16 @@ services:
     environment:
       - "SPARK_MODE=worker"
 
+  spark-worker-3:
+    image: bitnami/spark:3.4.1
+    container_name: spark-worker-3
+    depends_on:
+      - spark-master
+    ports:
+      - "8083:8081"
+    environment:
+      - "SPARK_MODE=worker"
+
   topic-register:
     image: topic-register:latest
     depends_on:
@@ -86,3 +96,14 @@ services:
         restart: true
     environment:
       - "SPARK_MODE=worker"
+
+  websocket:
+    image: kafka-websocket:latest
+    container_name: kafka-websocket-server
+    hostname: kafka-websocket
+    depends_on:
+      topic-register:
+        condition: service_completed_successfully
+        restart: true
+    ports:
+      - "8766:8766"
