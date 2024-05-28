@@ -9,7 +9,6 @@ metadata:
     io.kompose.service: kafka
   name: kafka
 spec:
-  type: LoadBalancer
   ports:
     - name: "9092"
       port: 9092
