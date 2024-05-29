@@ -63,7 +63,7 @@ class Scraper:
             # regular_market_price_float = float(regular_market_price)
             # regular_market_change_float = float(regular_market_change)
 
-            # diff = random.uniform(-10.00, 10.00)
+            # diff = random.uniform(-1.00, 1.00)
             
             # regular_market_change_float += diff
             # regular_market_change_percent = f"({round((regular_market_change_float / regular_market_price_float) * 100, 2)}%)"
